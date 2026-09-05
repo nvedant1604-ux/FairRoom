@@ -1,0 +1,44 @@
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Python
+backend/.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Logs
+*.log
+backend/*.log
+
+# Environment / Secrets
+.env
+.env.*
+!.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Backups
+backend/backups/
+
+# Playwright / test output
+frontend/playwright-report/
+frontend/test-results/
+
+# Local test evidence/runtime files
+submission/test-evidence/*.pid
+submission/test-evidence/*servers.json
+
+# Codex / local development
+.codex/
+
+# OS files
+.DS_Store
+Thumbs.db
