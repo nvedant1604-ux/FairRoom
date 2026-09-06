@@ -60,14 +60,14 @@ export function RoomManagement({ buildingId, buildingName, rooms, isAdmin, onRef
 
   return (
     <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Room management</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-earth">Room inventory</p>
             <h2 className="mt-2 text-2xl font-bold text-navy">Add available rooms</h2>
-            <p className="mt-2 text-sm font-semibold text-blue-800">Managing rooms for: {buildingName}</p>
+            <p className="mt-2 text-sm font-semibold text-earth">Managing rooms for: {buildingName}</p>
           </div>
-          <Building2 aria-hidden="true" className="h-8 w-8 text-blue-700" />
+          <Building2 aria-hidden="true" className="h-8 w-8 text-earth" />
         </div>
         <form className="mt-5 space-y-4" onSubmit={submitRoom}>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -163,7 +163,7 @@ export function RoomManagement({ buildingId, buildingName, rooms, isAdmin, onRef
             </div>
           ) : null}
           <button
-            className="focus-ring w-full rounded-lg bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="focus-ring w-full rounded-lg bg-earth px-4 py-3 font-semibold text-white hover:bg-forest disabled:cursor-not-allowed disabled:bg-slate-400"
             disabled={!isAdmin || saving}
             type="submit"
           >
@@ -172,7 +172,7 @@ export function RoomManagement({ buildingId, buildingName, rooms, isAdmin, onRef
         </form>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-2xl font-bold text-navy">Available Rooms Section</h2>
@@ -187,7 +187,7 @@ export function RoomManagement({ buildingId, buildingName, rooms, isAdmin, onRef
         ) : (
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {rooms.map((room) => (
-              <article key={room.id} className="rounded-lg border border-slate-200 p-4">
+              <article key={room.id} className="rounded-xl border border-slate-200 p-4 transition hover:border-sage hover:bg-cream/50">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-bold text-navy">{room.room_number}</h3>

@@ -33,10 +33,10 @@ function auditBadge(action: string) {
 
 export function AuditLogs({ audits }: AuditLogsProps) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-purple-700">Audit trail</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-terracotta-dark">AI fairness engine · audit trail</p>
           <h2 className="mt-2 text-2xl font-bold text-navy">Every important action is recorded</h2>
           <p className="mt-2 text-sm text-slate-600">
             Transparent history for resident changes, room setup, lottery locks, report downloads, and blocked edits.
@@ -49,15 +49,16 @@ export function AuditLogs({ audits }: AuditLogsProps) {
           <EmptyState title="No audit entries" detail="Resident, room, verification, and lottery actions will appear here." />
         </div>
       ) : (
-        <div className="mt-5 space-y-3">
+        <div className="mt-5 space-y-3 border-l-2 border-sage pl-4 sm:pl-5">
           {audits.map((audit) => {
             const badge = auditBadge(audit.action);
             const Icon = badge.icon;
             return (
-              <article key={audit.id} className="rounded-lg border border-slate-200 p-4 transition hover:border-blue-200 hover:bg-slate-50">
+              <article key={audit.id} className="relative rounded-xl border border-slate-200 bg-white p-4 transition hover:border-sage hover:bg-cream/60">
+                <span aria-hidden="true" className="absolute -left-[1.4rem] top-6 h-3 w-3 rounded-full border-2 border-white bg-earth ring-1 ring-sage sm:-left-[1.65rem]" />
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-700 ring-1 ring-purple-100">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sand text-terracotta-dark ring-1 ring-clay/40">
                       <Icon aria-hidden="true" className="h-5 w-5" />
                     </div>
                     <div>
@@ -69,7 +70,7 @@ export function AuditLogs({ audits }: AuditLogsProps) {
                       {audit.reason ? <p className="mt-1 text-sm font-semibold text-orange-700">Reason: {audit.reason}</p> : null}
                     </div>
                   </div>
-                  <div className="rounded-lg bg-slate-50 p-3 text-left text-sm text-slate-500 ring-1 ring-slate-200 sm:text-right">
+                  <div className="rounded-lg bg-cream p-3 text-left text-sm text-slate-500 ring-1 ring-slate-200 sm:text-right">
                     <div className="flex items-center gap-2 sm:justify-end">
                       <FileClock aria-hidden="true" className="h-4 w-4" />
                       <p>{new Date(audit.timestamp).toLocaleString()}</p>

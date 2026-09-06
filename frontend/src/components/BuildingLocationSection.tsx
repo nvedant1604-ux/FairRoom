@@ -54,10 +54,10 @@ export function BuildingLocationSection({ building, isAdmin }: { building: Build
 
   return (
     <section aria-labelledby="building-location-heading" className="dashboard-reveal map-card overflow-hidden rounded-lg border border-slate-200 bg-white shadow-soft" data-testid="building-location-section">
-      <div className="border-b border-slate-200 p-5 sm:p-6">
+      <div className="border-b border-slate-200 bg-cream p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-blue-700">Standard 2D map</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-earth">Standard 2D map</p>
             <h2 className="mt-1 text-xl font-bold text-navy" id="building-location-heading">Building Location</h2>
           </div>
           <span className="status-transition rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-bold text-slate-700">
@@ -98,7 +98,7 @@ export function BuildingLocationSection({ building, isAdmin }: { building: Build
           <div className="mt-5 grid gap-2 sm:grid-cols-2">
             <a
               aria-label={`Open ${building.building_name} in Google Maps`}
-              className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800"
+              className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-earth px-4 py-2 text-sm font-bold text-white hover:bg-forest"
               href={mapsSearchUrl(building)}
               rel="noopener noreferrer"
               target="_blank"
@@ -108,7 +108,7 @@ export function BuildingLocationSection({ building, isAdmin }: { building: Build
             </a>
             <a
               aria-label={`Get directions to ${building.building_name}`}
-              className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white hover:bg-green-800"
+              className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-earth px-4 py-2 text-sm font-bold text-white hover:bg-forest"
               href={mapsDirectionsUrl(building)}
               rel="noopener noreferrer"
               target="_blank"
@@ -138,7 +138,7 @@ export function BuildingLocationSection({ building, isAdmin }: { building: Build
             {isAdmin ? (
               <button
                 aria-label={`Edit map location for ${building.building_name}`}
-                className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-800 hover:bg-blue-100 sm:col-span-2"
+                className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-sage bg-sage-light px-4 py-2 text-sm font-bold text-forest hover:bg-sage sm:col-span-2"
                 onClick={() => window.dispatchEvent(new CustomEvent("edit-building", { detail: building.id }))}
                 type="button"
               >
@@ -160,7 +160,7 @@ export function BuildingLocationLoading({ buildingName }: { buildingName: string
       <h2 className="text-xl font-bold text-navy" id="building-location-heading">Building Location</h2>
       <div className="mt-4 flex min-h-[280px] items-center justify-center rounded-lg bg-slate-50 text-center" role="status">
         <div>
-          <MapPinned aria-hidden="true" className="mx-auto h-8 w-8 text-blue-700" />
+          <MapPinned aria-hidden="true" className="mx-auto h-8 w-8 text-earth" />
           <p className="mt-3 font-semibold text-slate-700">Loading building location…</p>
           <p className="mt-1 text-sm text-slate-500">{buildingName}</p>
         </div>

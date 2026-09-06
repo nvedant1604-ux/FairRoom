@@ -95,15 +95,15 @@ export function ResidentRegistration({ buildingId, buildingName, residents, isAd
 
   return (
     <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Resident registration</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-earth">Housing application</p>
             <h2 className="mt-2 text-2xl font-bold text-navy">Add and verify residents</h2>
           </div>
           <StatusPill label={isAdmin ? "Admin enabled" : "Login required"} tone={isAdmin ? "green" : "orange"} />
         </div>
-        <p className="mt-3 text-sm font-semibold text-blue-800">Registering resident for: {buildingName}</p>
+        <p className="mt-3 rounded-lg border border-sage bg-sage-light/50 px-3 py-2 text-sm font-semibold text-forest">Registering resident for: {buildingName}</p>
 
         <form className="mt-5 space-y-4" onSubmit={submitResident}>
           <div>
@@ -248,7 +248,7 @@ export function ResidentRegistration({ buildingId, buildingName, residents, isAd
             </div>
           ) : null}
           <button
-            className="focus-ring w-full rounded-lg bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="focus-ring w-full rounded-lg bg-earth px-4 py-3 font-semibold text-white hover:bg-forest disabled:cursor-not-allowed disabled:bg-slate-400"
             disabled={!isAdmin || saving}
             type="submit"
           >
@@ -257,7 +257,7 @@ export function ResidentRegistration({ buildingId, buildingName, residents, isAd
         </form>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-2xl font-bold text-navy">Resident List</h2>
@@ -272,7 +272,7 @@ export function ResidentRegistration({ buildingId, buildingName, residents, isAd
         ) : (
           <div className="mt-5 overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <thead className="bg-sage-light text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-3 py-3">Resident</th>
                   <th className="px-3 py-3">Masked Aadhaar</th>

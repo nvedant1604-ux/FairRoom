@@ -61,8 +61,8 @@ export function ResidentSearch() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
-        <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Resident view</p>
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
+        <p className="text-sm font-semibold uppercase tracking-[0.14em] text-earth">Public resident lookup</p>
         <h2 className="mt-2 text-2xl font-bold text-navy">Check allocation status</h2>
         <p className="mt-2 text-sm text-slate-600">
           Search using Aadhaar last 4 digits or old room number. Full Aadhaar is never shown.
@@ -83,7 +83,7 @@ export function ResidentSearch() {
             />
           </div>
           <button
-            className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800 disabled:bg-slate-400"
+            className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-lg bg-earth px-4 py-3 font-semibold text-white hover:bg-forest disabled:bg-slate-400"
             disabled={loading}
             type="submit"
           >
@@ -98,9 +98,9 @@ export function ResidentSearch() {
           </div>
         ) : null}
 
-        <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <div className="mt-6 rounded-xl border border-sand bg-sand/35 p-4">
           <div className="flex items-center gap-3">
-            <Bot aria-hidden="true" className="h-5 w-5 text-purple-700" />
+            <Bot aria-hidden="true" className="h-5 w-5 text-terracotta-dark" />
             <h3 className="font-bold text-navy">Resident Query Assistant</h3>
           </div>
           <form className="mt-4 space-y-3" onSubmit={askChatbot}>
@@ -111,7 +111,7 @@ export function ResidentSearch() {
               placeholder="How was the lottery done?"
             />
             <button
-              className="focus-ring rounded-lg bg-purple-700 px-4 py-2 font-semibold text-white hover:bg-purple-800"
+              className="focus-ring rounded-lg bg-terracotta-dark px-4 py-2 font-semibold text-white hover:bg-red-800"
               type="submit"
             >
               Ask Assistant
@@ -121,10 +121,10 @@ export function ResidentSearch() {
         </div>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-green-700">Allocation certificate</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-earth">Allocation certificate</p>
             <h2 className="mt-2 text-2xl font-bold text-navy">Resident result</h2>
           </div>
           <StatusPill label={allocationStatus} tone={statusTone(allocationStatus)} />
@@ -135,7 +135,7 @@ export function ResidentSearch() {
           </div>
         ) : (
           <div className="mt-5 space-y-4">
-            <div className="rounded-lg border border-green-200 bg-gradient-to-r from-green-50 to-blue-50 p-5">
+            <div className="rounded-xl border border-sage bg-gradient-to-r from-sage-light to-cream p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h3 className="text-2xl font-bold text-navy">{result.full_name}</h3>
@@ -168,19 +168,19 @@ export function ResidentSearch() {
               </div>
             </dl>
 
-            <div className="rounded-lg border border-purple-100 bg-purple-50 p-4">
+            <div className="rounded-lg border border-clay/40 bg-sand/45 p-4">
               <div className="flex items-start gap-3">
-                <ShieldCheck aria-hidden="true" className="mt-1 h-5 w-5 text-purple-700" />
+                <ShieldCheck aria-hidden="true" className="mt-1 h-5 w-5 text-terracotta-dark" />
                 <div>
-                  <h3 className="font-bold text-purple-950">AI Explanation</h3>
-                  <p className="mt-2 text-sm leading-6 text-purple-900">
+                  <h3 className="font-bold text-terracotta-dark">AI Explanation</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">
                     {result.allocation_reason ?? "Allocation has not been completed yet."}
                   </p>
                 </div>
               </div>
             </div>
 
-            {result.draw_history?.length ? <div className="rounded-lg border border-blue-200 bg-blue-50 p-4"><h3 className="font-bold text-navy">Lottery Draw Participation</h3>{result.draw_history.map(draw=><article className="mt-3 rounded bg-white p-3" key={draw.draw_reference}><b>Draw {draw.draw_number}: {draw.draw_name}</b><p>{draw.draw_reference} · {draw.allocation_status} · {draw.allocated_room_snapshot||"No room allocated"}</p><p className="mt-1 text-sm text-slate-600">{draw.ai_explanation?.replace(" No manual override was used.","")}</p></article>)}</div>:null}
+            {result.draw_history?.length ? <div className="rounded-xl border border-sage bg-sage-light/45 p-4"><h3 className="font-bold text-navy">Lottery Draw Participation</h3>{result.draw_history.map(draw=><article className="mt-3 rounded-lg bg-white p-3 ring-1 ring-slate-200" key={draw.draw_reference}><b>Draw {draw.draw_number}: {draw.draw_name}</b><p>{draw.draw_reference} · {draw.allocation_status} · {draw.allocated_room_snapshot||"No room allocated"}</p><p className="mt-1 text-sm text-slate-600">{draw.ai_explanation?.replace(" No manual override was used.","")}</p></article>)}</div>:null}
 
             <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
               <div className="flex items-start gap-3">
@@ -192,7 +192,7 @@ export function ResidentSearch() {
             </div>
 
             <a
-              className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800 sm:w-auto"
+              className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-lg bg-earth px-4 py-3 font-semibold text-white hover:bg-forest sm:w-auto"
               href={downloadUrl(`/resident/certificate?building_id=${selectedBuildingId}&query=${encodeURIComponent(query)}`)}
             >
               <Download aria-hidden="true" className="h-4 w-4" />

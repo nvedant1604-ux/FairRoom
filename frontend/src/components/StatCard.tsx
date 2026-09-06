@@ -10,17 +10,17 @@ interface StatCardProps {
 }
 
 const toneClasses = {
-  blue: "bg-blue-50 text-blue-700 border-blue-100",
+  blue: "bg-sage-light text-earth border-sage",
   green: "bg-green-50 text-green-700 border-green-100",
   orange: "bg-orange-50 text-orange-700 border-orange-100",
-  purple: "bg-purple-50 text-purple-700 border-purple-100"
+  purple: "bg-sand text-terracotta-dark border-clay/40"
 };
 
 const accentClasses = {
-  blue: "from-blue-500 to-blue-700",
-  green: "from-green-500 to-green-700",
-  orange: "from-orange-500 to-orange-700",
-  purple: "from-purple-500 to-purple-700"
+  blue: "from-sage to-earth",
+  green: "from-sage to-green-700",
+  orange: "from-mustard to-orange-600",
+  purple: "from-clay to-terracotta-dark"
 };
 
 export function StatCard({ title, value, detail, tone, icon: Icon }: StatCardProps) {
@@ -49,7 +49,7 @@ export function StatCard({ title, value, detail, tone, icon: Icon }: StatCardPro
   }, [value]);
 
   return (
-    <section className="dashboard-reveal group overflow-hidden rounded-lg border border-slate-200 bg-white shadow-soft transition hover:-translate-y-0.5 hover:shadow-lg">
+    <section className="dashboard-reveal group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-soft transition hover:-translate-y-0.5 hover:shadow-lg">
       <div className={`h-1.5 bg-gradient-to-r ${accentClasses[tone]}`} />
       <div className="p-5">
       <div className="flex items-start justify-between gap-4">

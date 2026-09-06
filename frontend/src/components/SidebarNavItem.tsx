@@ -29,8 +29,8 @@ export function SidebarNavItem({
         collapsed ? "justify-center px-2" : "gap-3 px-3"
       } ${
         active
-          ? "bg-blue-700 text-white shadow-sm"
-          : "bg-transparent text-navy hover:bg-blue-50 hover:text-blue-800"
+          ? "border-l-4 border-earth bg-blue-700 bg-sage-light pl-2 text-forest shadow-none"
+          : "border-l-4 border-transparent bg-transparent text-navy hover:bg-sage-light hover:text-forest"
       }`}
       onClick={() => onSelect(page)}
       title={collapsed ? label : undefined}
@@ -44,9 +44,9 @@ export function SidebarNavItem({
           className={
             collapsed
               ? `absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] ${
-                  active ? "bg-white text-blue-700" : "bg-slate-200 text-slate-600"
+                  active ? "bg-white text-earth" : "bg-slate-200 text-slate-600"
                 }`
-              : `shrink-0 text-xs ${active ? "text-white" : "text-slate-400"}`
+              : `shrink-0 text-xs ${active ? "text-earth" : "text-slate-400"}`
           }
         >
           <LockKeyhole aria-hidden="true" className={collapsed ? "h-2.5 w-2.5" : "h-3.5 w-3.5"} />

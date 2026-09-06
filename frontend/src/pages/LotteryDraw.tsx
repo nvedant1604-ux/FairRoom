@@ -123,14 +123,14 @@ export function LotteryDraw({ buildingId, buildingName, stats, allocations, isAd
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-lg border border-orange-100 bg-white shadow-soft">
-        <div className="bg-gradient-to-r from-orange-50 via-white to-blue-50 p-5 sm:p-6">
+      <section className="overflow-hidden rounded-xl border border-sand bg-white shadow-soft">
+        <div className="bg-gradient-to-r from-cream via-white to-sage-light p-5 sm:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-lottery">Transparent lottery draw</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-lottery">Official draw control</p>
               <h2 className="mt-2 text-2xl font-bold text-navy sm:text-3xl">Start AI-powered fair allocation</h2>
-              <p className="mt-2 font-semibold text-orange-800">Lottery Draw for: {buildingName}</p>
-              {activeCycle ? <p className="mt-1 font-bold text-blue-700">Draw {activeCycle.draw_number} · {activeCycle.draw_reference} · {activeCycle.draw_name} · {activeCycle.status}</p> : null}
+              <p className="mt-2 font-semibold text-orange-800">Draw cycle for: {buildingName}</p>
+              {activeCycle ? <p className="mt-1 font-bold text-earth">Draw {activeCycle.draw_number} · {activeCycle.draw_reference} · {activeCycle.draw_name} · {activeCycle.status}</p> : null}
               <p className="mt-2 max-w-3xl text-slate-600">
                 The draw locks verified residents and available rooms, generates a seed, then creates auditable allocations.
               </p>
@@ -144,15 +144,17 @@ export function LotteryDraw({ buildingId, buildingName, stats, allocations, isAd
         </div>
       </section>
 
-      {competitive ? <section className="rounded-lg border border-purple-200 bg-purple-50 p-5"><h3 className="font-bold text-purple-900">Competitive Lottery Summary</h3><p className="mt-1 text-sm text-purple-800">All eligible residents may participate. The system will select winners up to the number of available rooms.</p><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Eligible Residents",cycleDetails?.totals.included_residents??0],["Available Rooms",cycleDetails?.totals.included_rooms??0],["Expected Winners",expectedWinners],["Expected Non-Winners",expectedNonWinners]].map(([label,value])=><div className="rounded-lg bg-white p-3" key={String(label)}><p className="text-xs font-semibold uppercase text-slate-500">{label}</p><p className="mt-1 text-2xl font-bold text-navy">{value}</p></div>)}</div><p className="mt-3 text-sm font-semibold text-purple-900">Waiting List: {activeCycle?.waiting_list_enabled?"Enabled":"Disabled"}</p></section> : null}
+      {activeCycle && !competitive ? <section className="rounded-xl border border-sage bg-sage-light/60 p-5"><h3 className="font-bold text-forest">Full Allocation</h3><p className="mt-1 text-sm text-slate-700">Included verified residents will be paired with the selected available rooms using the stored seeded process.</p><p className="mt-3 text-sm font-semibold text-forest">Readiness: {activeCycle.status} · {cycleDetails?.totals.included_residents ?? verifiedReady} residents · {cycleDetails?.totals.included_rooms ?? stats?.available_rooms ?? 0} rooms</p></section> : null}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      {competitive ? <section className="rounded-xl border border-clay/50 bg-sand/50 p-5"><h3 className="font-bold text-terracotta-dark">Competitive Lottery</h3><p className="mt-1 text-sm text-slate-700">All eligible residents may participate. The system will select winners up to the number of available rooms.</p><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Eligible Residents",cycleDetails?.totals.included_residents??0],["Available Rooms",cycleDetails?.totals.included_rooms??0],["Expected Winners",expectedWinners],["Not Selected",expectedNonWinners]].map(([label,value])=><div className="rounded-lg bg-white p-3" key={String(label)}><p className="text-xs font-semibold uppercase text-slate-500">{label}</p><p className="mt-1 text-2xl font-bold text-navy">{value}</p></div>)}</div><p className="mt-3 text-sm font-semibold text-orange-800">Waiting List: {activeCycle?.waiting_list_enabled?"Enabled":"Disabled"}</p></section> : null}
+
+      <section aria-label="Lottery draw cycle" className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         {drawSteps.map((step, index) => {
           const Icon = step.icon;
           return (
-            <article key={step.title} className="rounded-lg border border-slate-200 bg-white p-4 shadow-soft">
+            <article key={step.title} className="relative rounded-xl border border-slate-200 bg-white p-4 shadow-soft">
               <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-sm font-bold text-orange-700">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sage-light text-sm font-bold text-earth">
                   {index + 1}
                 </span>
                 <Icon aria-hidden="true" className="h-5 w-5 text-navy" />
@@ -171,11 +173,11 @@ export function LotteryDraw({ buildingId, buildingName, stats, allocations, isAd
             <p className="mt-2 text-sm text-slate-600">
               Once the lottery starts, resident and room data will be locked for transparency.
             </p>
-            <div className="mt-4 rounded-lg border border-orange-200 bg-orange-50 p-4 text-sm font-semibold text-orange-800">
+            <div className="mt-4 rounded-lg border border-mustard bg-orange-50 p-4 text-sm font-semibold text-orange-800">
               Warning: after the lock, edit attempts are blocked and written to the audit trail.
             </div>
             <button
-              className="focus-ring mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-3 font-semibold text-white shadow-soft hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-slate-400 sm:w-auto"
+              className="focus-ring mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-earth px-4 py-3 font-semibold text-white shadow-soft hover:bg-forest disabled:cursor-not-allowed disabled:bg-slate-400 sm:w-auto"
               disabled={!isAdmin || running || alreadyRun}
               onClick={() => setConfirming(true)}
               type="button"
@@ -192,9 +194,9 @@ export function LotteryDraw({ buildingId, buildingName, stats, allocations, isAd
               </p>
             ) : null}
           </div>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-5">
+          <div className="rounded-xl border border-sage bg-cream p-5">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-              <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-orange-200 bg-white text-4xl font-black text-orange-600 shadow-soft">
+              <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-sage bg-white text-4xl font-black text-earth shadow-soft">
                 {countdown ?? (progress === 100 ? "OK" : <Sparkles aria-hidden="true" className="h-9 w-9" />)}
               </div>
               <div className="min-w-0 flex-1">
@@ -204,7 +206,7 @@ export function LotteryDraw({ buildingId, buildingName, stats, allocations, isAd
                 </p>
                 <div className="mt-4 h-4 overflow-hidden rounded-full bg-white ring-1 ring-slate-200">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-orange-500 to-green-600 transition-all duration-500"
+                    className="h-full rounded-full bg-gradient-to-r from-earth to-green-600 transition-all duration-500"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -212,11 +214,11 @@ export function LotteryDraw({ buildingId, buildingName, stats, allocations, isAd
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
               <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
-                <Clock3 aria-hidden="true" className="h-5 w-5 text-blue-700" />
+                <Clock3 aria-hidden="true" className="h-5 w-5 text-info" />
                 <p className="mt-2 text-sm font-semibold text-navy">Timestamped</p>
               </div>
               <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
-                <KeyRound aria-hidden="true" className="h-5 w-5 text-orange-700" />
+                <KeyRound aria-hidden="true" className="h-5 w-5 text-terracotta-dark" />
                 <p className="mt-2 text-sm font-semibold text-navy">Seed stored</p>
               </div>
               <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
@@ -225,8 +227,8 @@ export function LotteryDraw({ buildingId, buildingName, stats, allocations, isAd
               </div>
             </div>
             {seedToShow ? (
-              <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Lottery seed</p>
+              <div className="mt-4 rounded-lg border border-sage bg-sage-light/50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-earth">Lottery seed</p>
                 <p className="mt-1 break-all font-mono text-sm font-bold text-navy">{seedToShow}</p>
               </div>
             ) : null}
@@ -267,7 +269,7 @@ export function LotteryDraw({ buildingId, buildingName, stats, allocations, isAd
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
           <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-soft">
             <div className="flex items-start gap-3">
-              <Database aria-hidden="true" className="mt-1 h-6 w-6 text-orange-600" />
+              <Database aria-hidden="true" className="mt-1 h-6 w-6 text-earth" />
               <div>
                 <h3 className="text-xl font-bold text-navy">Confirm locked lottery draw</h3>
                 <p className="mt-3 text-sm text-slate-600">
@@ -287,7 +289,7 @@ export function LotteryDraw({ buildingId, buildingName, stats, allocations, isAd
                 Cancel
               </button>
               <button
-                className="focus-ring rounded-lg bg-orange-600 px-4 py-2 font-semibold text-white hover:bg-orange-700"
+                className="focus-ring rounded-lg bg-earth px-4 py-2 font-semibold text-white hover:bg-forest"
                 onClick={runLottery}
                 type="button"
               >

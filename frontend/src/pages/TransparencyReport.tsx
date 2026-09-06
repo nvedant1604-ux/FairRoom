@@ -23,11 +23,11 @@ export function TransparencyReport({ buildingId, report }: TransparencyReportPro
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-lg border border-purple-100 bg-white shadow-soft">
-        <div className="bg-gradient-to-r from-purple-50 via-white to-green-50 p-5 sm:p-6">
+      <section className="overflow-hidden rounded-xl border border-sand bg-white shadow-soft">
+        <div className="bg-gradient-to-r from-cream via-white to-sage-light p-5 sm:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-purple-700">Transparency report</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-terracotta-dark">Public transparency document</p>
               <h2 className="mt-2 text-2xl font-bold text-navy sm:text-3xl">Audit-ready project certificate</h2>
               <p className="mt-2 max-w-3xl text-slate-600">
                 Includes society details, rules, seed, allocation list, fairness score, AI summary, and audit log summary.
@@ -35,7 +35,7 @@ export function TransparencyReport({ buildingId, report }: TransparencyReportPro
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <a
-                className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white hover:bg-blue-800"
+                className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-earth px-4 py-2 font-semibold text-white hover:bg-forest"
                 href={downloadUrl(`/buildings/${buildingId}/report.pdf`)}
               >
                 <Download aria-hidden="true" className="h-4 w-4" />
@@ -53,15 +53,15 @@ export function TransparencyReport({ buildingId, report }: TransparencyReportPro
         </div>
       </section>
 
-      <section className="rounded-lg border border-green-200 bg-white p-5 shadow-soft sm:p-7">
-        <div className="mx-auto max-w-5xl rounded-lg border border-green-200 bg-gradient-to-br from-white via-green-50 to-blue-50 p-5 shadow-soft sm:p-8">
+      <section className="rounded-xl border border-sage bg-white p-5 shadow-soft sm:p-7">
+        <div className="mx-auto max-w-5xl rounded-xl border border-sage bg-gradient-to-br from-white via-sage-light/55 to-cream p-5 shadow-soft sm:p-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-green-700 text-white shadow-soft">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-earth text-white shadow-soft">
                 <Award aria-hidden="true" className="h-7 w-7" />
               </div>
               <div>
-                <p className="text-sm font-semibold uppercase tracking-wide text-green-700">Transparency Certificate</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-earth">Transparency Certificate</p>
                 <h3 className="mt-1 text-3xl font-black text-navy">Transparency Certificate</h3>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
                   This allocation was generated through a locked and auditable lottery process. AI fairness checks were used to validate eligibility, detect suspicious entries, and generate explanations. No manual room selection was used.
@@ -70,7 +70,7 @@ export function TransparencyReport({ buildingId, report }: TransparencyReportPro
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <a
-                className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-green-700 px-4 py-2 font-semibold text-white hover:bg-green-800"
+                className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-earth px-4 py-2 font-semibold text-white hover:bg-forest"
                 href={downloadUrl(`/buildings/${buildingId}/report/certificate`)}
               >
                 <Download aria-hidden="true" className="h-4 w-4" />
@@ -122,12 +122,12 @@ export function TransparencyReport({ buildingId, report }: TransparencyReportPro
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-soft">
           <p className="text-sm text-slate-500">Fairness Score</p>
-          <p className="mt-2 text-2xl font-bold text-purple-700">{report.totals.fairness_score}%</p>
+          <p className="mt-2 text-2xl font-bold text-earth">{report.totals.fairness_score}%</p>
         </article>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
           <h3 className="text-xl font-bold text-navy">Certificate Evidence</h3>
           <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-4">
             <div className="flex gap-3">
@@ -140,12 +140,12 @@ export function TransparencyReport({ buildingId, report }: TransparencyReportPro
               </div>
             </div>
           </div>
-          <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <div className="mt-4 rounded-lg border border-sage bg-sage-light/55 p-4">
             <div className="flex gap-3">
-              <KeyRound aria-hidden="true" className="mt-1 h-5 w-5 text-blue-700" />
+              <KeyRound aria-hidden="true" className="mt-1 h-5 w-5 text-earth" />
               <div>
-                <p className="font-semibold text-blue-900">Seed</p>
-                <p className="mt-1 break-all font-mono text-sm font-bold text-blue-900">{report.lottery_seed}</p>
+                <p className="font-semibold text-forest">Seed</p>
+                <p className="mt-1 break-all font-mono text-sm font-bold text-forest">{report.lottery_seed}</p>
               </div>
             </div>
           </div>
@@ -165,7 +165,7 @@ export function TransparencyReport({ buildingId, report }: TransparencyReportPro
           </dl>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
           <h3 className="text-xl font-bold text-navy">Lottery Rules</h3>
           <div className="mt-4 space-y-3">
             {report.lottery_rules.map((rule) => (
@@ -178,7 +178,7 @@ export function TransparencyReport({ buildingId, report }: TransparencyReportPro
         </div>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
         <h3 className="text-xl font-bold text-navy">Audit Log Summary</h3>
         <div className="mt-4 space-y-3">
           {report.audit_log_summary.length === 0 ? (

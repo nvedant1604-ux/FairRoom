@@ -137,8 +137,8 @@ export function BuildingControls({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <>
-      <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
-        <label className="shrink-0 text-xs font-bold text-slate-600" htmlFor="building-selector">Current Building:</label>
+      <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-sage bg-white px-3 py-2 shadow-sm">
+        <label className="shrink-0 text-xs font-bold uppercase tracking-wide text-earth" htmlFor="building-selector">Current Building:</label>
         <select
           className="min-w-0 flex-1 bg-white text-sm font-semibold text-navy xl:max-w-56"
           id="building-selector"
@@ -154,7 +154,7 @@ export function BuildingControls({ isAdmin }: { isAdmin: boolean }) {
         {isAdmin ? (
           <button
             aria-label="Add Building"
-            className="focus-ring shrink-0 rounded-md bg-blue-700 px-2 py-1 text-xs font-bold text-white hover:bg-blue-800"
+            className="focus-ring shrink-0 rounded-md bg-earth px-2 py-1 text-xs font-bold text-white hover:bg-forest"
             onClick={() => window.dispatchEvent(new Event("add-building"))}
             type="button"
           >
@@ -167,7 +167,7 @@ export function BuildingControls({ isAdmin }: { isAdmin: boolean }) {
 
       {open ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-4">
-          <form className="max-h-[94vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white p-5 sm:p-6" onSubmit={submit}>
+          <form className="max-h-[94vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-5 shadow-soft sm:p-6" onSubmit={submit}>
             <h2 className="text-2xl font-bold text-navy">{editId ? "Edit Building" : "Add Building"}</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {textFields.map(([key, label]) => (
@@ -189,7 +189,7 @@ export function BuildingControls({ isAdmin }: { isAdmin: boolean }) {
               ))}
             </div>
 
-            <section aria-labelledby="map-location-form-heading" className="mt-6 rounded-lg border border-blue-200 bg-blue-50/40 p-4">
+            <section aria-labelledby="map-location-form-heading" className="mt-6 rounded-xl border border-sage bg-sage-light/45 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h3 className="text-lg font-bold text-navy" id="map-location-form-heading">Map Location</h3>
@@ -198,7 +198,7 @@ export function BuildingControls({ isAdmin }: { isAdmin: boolean }) {
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <button
                     aria-label="Select Location on Map"
-                    className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800"
+                    className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-earth px-4 py-2 text-sm font-bold text-white hover:bg-forest"
                     onClick={() => setMapOpen((current) => !current)}
                     type="button"
                   >
@@ -286,7 +286,7 @@ export function BuildingControls({ isAdmin }: { isAdmin: boolean }) {
               <button className="focus-ring min-h-11 rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700" onClick={() => setOpen(false)} type="button">
                 Cancel
               </button>
-              <button className="focus-ring min-h-11 rounded-lg bg-blue-700 px-4 py-2 font-bold text-white disabled:bg-slate-400" disabled={saving} type="submit">
+              <button className="focus-ring min-h-11 rounded-lg bg-earth px-4 py-2 font-bold text-white hover:bg-forest disabled:bg-slate-400" disabled={saving} type="submit">
                 {saving ? (editId ? "Saving Building…" : "Adding Building…") : (editId ? "Save Building" : "Add Building")}
               </button>
             </div>

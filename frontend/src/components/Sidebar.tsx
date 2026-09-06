@@ -90,7 +90,7 @@ export function Sidebar({
   return (
     <aside
       aria-label={mobile ? "Mobile navigation drawer" : "Application sidebar"}
-      className={`flex h-full flex-col border-r border-slate-200 bg-white shadow-soft ${
+      className={`flex h-full flex-col border-r border-slate-200 bg-cream shadow-soft ${
         mobile ? "w-[280px]" : collapsed ? "w-[76px]" : "w-[252px]"
       }`}
       data-collapsed={visuallyCollapsed ? "true" : "false"}
@@ -100,13 +100,13 @@ export function Sidebar({
         visuallyCollapsed ? "justify-center px-2" : "justify-between gap-3 px-4"
       }`}>
         <div className={`flex min-w-0 items-center ${visuallyCollapsed ? "justify-center" : "gap-3"}`}>
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-white">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-earth text-white shadow-sm">
             <Sparkles aria-hidden="true" className="h-5 w-5" />
           </span>
           {!visuallyCollapsed ? (
             <div className="min-w-0">
               <p className="text-sm font-extrabold leading-tight text-navy">FairRoom</p>
-              <p className="mt-0.5 text-xs font-semibold text-fairness">Fair &amp; Transparent</p>
+              <p className="mt-0.5 text-xs font-semibold text-fairness">Fair, transparent &amp; auditable</p>
             </div>
           ) : null}
         </div>
@@ -131,7 +131,7 @@ export function Sidebar({
           return (
             <section className={groupIndex === 0 ? "" : "mt-5"} key={group.label}>
               {!visuallyCollapsed ? (
-                <h2 className="mb-2 px-3 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
+                <h2 className="mb-2 px-3 text-[11px] font-extrabold uppercase tracking-[0.14em] text-earth/70">
                   {group.label}
                 </h2>
               ) : null}

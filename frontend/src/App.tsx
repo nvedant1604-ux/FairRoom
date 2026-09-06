@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Shell } from "./components/Shell";
@@ -53,9 +53,16 @@ export default function App() {
   const [activeDrawCycleId, setActiveDrawCycleId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const refreshSequence = useRef(0);
 
   const refreshAll = useCallback(async () => {
-    if (!selectedBuildingId) { setDashboard(null); setResidents([]); setRooms([]); setAllocations([]); setAudits([]); setReport(null); setActiveDrawCycleId(null); setLoading(false); return; }
+    const requestSequence = ++refreshSequence.current;
+    if (!selectedBuildingId) {
+      if (requestSequence === refreshSequence.current) {
+        setDashboard(null); setResidents([]); setRooms([]); setAllocations([]); setAudits([]); setReport(null); setActiveDrawCycleId(null); setLoading(false);
+      }
+      return;
+    }
     setLoading(true); setGlobalError(null);
     setDashboard(null); setResidents([]); setRooms([]); setAllocations([]); setAudits([]); setReport(null); setActiveDrawCycleId(null);
     try {
@@ -65,11 +72,16 @@ export default function App() {
         apiRequest<Allocation[]>(`${base}/allocations`), getAdminToken() ? apiRequest<AuditLog[]>(`${base}/audit`) : Promise.resolve([]), apiRequest<Report>(`${base}/report`),
         getAdminToken() ? apiRequest<LotteryDrawRecord[]>(`${base}/draws`) : Promise.resolve([])
       ]);
+      if (requestSequence !== refreshSequence.current) return;
       setDashboard(dashboardData); setResidents(residentData); setRooms(roomData); setAllocations(allocationData); setAudits(auditData); setReport(reportData);
       setActiveDrawCycleId(drawData.find((draw) => ["Preparing", "Ready", "In Progress"].includes(draw.status))?.id ?? null);
     } catch (err) {
-      setGlobalError(err instanceof Error ? err.message : "The dashboard could not connect to the backend API.");
-    } finally { setLoading(false); }
+      if (requestSequence === refreshSequence.current) {
+        setGlobalError(err instanceof Error ? err.message : "The dashboard could not connect to the backend API.");
+      }
+    } finally {
+      if (requestSequence === refreshSequence.current) setLoading(false);
+    }
   }, [selectedBuildingId]);
 
   const navigate = useCallback((page: PageKey, replace = false, state?: Record<string, unknown>) => {
@@ -156,7 +168,7 @@ export default function App() {
   const protectedContent = (content: ReactNode) => <ProtectedRoute sessionStatus={sessionStatus}>{content}</ProtectedRoute>;
   const page = (() => {
     switch (activePage) {
-      case "dashboard": return !selectedBuilding&&!buildingsLoading?<div className="rounded-lg border bg-white p-8 text-center"><h2 className="text-2xl font-bold">No buildings have been added yet.</h2>{isAdmin?<button className="mt-4 rounded-lg bg-blue-700 px-4 py-2 font-bold text-white" onClick={()=>window.dispatchEvent(new Event("add-building"))}>Add Your First Building</button>:null}</div>:<Dashboard stats={dashboard} allocations={allocations} loading={loading||buildingsLoading} isAdmin={isAdmin} onDemoReset={resetDemoData} onAdminLogin={() => navigate("admin")} />;
+      case "dashboard": return !selectedBuilding&&!buildingsLoading?<div className="rounded-xl border border-sage bg-white p-8 text-center shadow-soft"><h2 className="text-2xl font-bold text-navy">No buildings have been added yet.</h2>{isAdmin?<button className="mt-4 rounded-lg bg-earth px-4 py-2 font-bold text-white hover:bg-forest" onClick={()=>window.dispatchEvent(new Event("add-building"))}>Add Your First Building</button>:null}</div>:<Dashboard stats={dashboard} allocations={allocations} loading={loading||buildingsLoading} isAdmin={isAdmin} onDemoReset={resetDemoData} onAdminLogin={() => navigate("admin")} />;
       case "residents": return protectedContent(<ResidentRegistration buildingId={selectedBuildingId!} buildingName={selectedBuilding?.building_name??""} residents={residents} isAdmin={isAdmin} onRefresh={refreshAll} />);
       case "rooms": return protectedContent(<RoomManagement buildingId={selectedBuildingId!} buildingName={selectedBuilding?.building_name??""} rooms={rooms} isAdmin={isAdmin} onRefresh={refreshAll} />);
       case "lottery": return protectedContent(<LotteryDraw buildingId={selectedBuildingId!} buildingName={selectedBuilding?.building_name??""} stats={dashboard} allocations={allocations} isAdmin={isAdmin} onRefresh={refreshAll} />);

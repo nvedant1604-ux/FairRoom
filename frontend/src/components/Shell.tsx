@@ -73,7 +73,7 @@ export function Shell({
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50">
+    <div className="min-h-screen overflow-x-hidden bg-ivory">
       <div className="fixed inset-y-0 left-0 z-40 hidden md:block">
         <Sidebar
           activeDrawCycleId={activeDrawCycleId}
@@ -141,7 +141,7 @@ export function Shell({
                 </>
               ) : (
                 <button
-                  className="focus-ring inline-flex items-center gap-2 rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+                className="focus-ring inline-flex items-center gap-2 rounded-lg bg-earth px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-forest"
                   onClick={() => onNavigate("admin")}
                   type="button"
                 >

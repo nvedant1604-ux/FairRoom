@@ -42,16 +42,16 @@ export function AdminLogin({ isAdmin, onLogin, onLogout, notice }: AdminLoginPro
 
   return (
     <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Authentication status: Admin access required</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-earth">Authority access</p>
             <h2 className="mt-2 text-2xl font-bold text-navy">Admin Login Required</h2>
           </div>
-          <LockKeyhole aria-hidden="true" className="h-8 w-8 text-blue-700" />
+          <LockKeyhole aria-hidden="true" className="h-8 w-8 text-earth" />
         </div>
         <form className="mt-5 space-y-4" onSubmit={login}>
-          <p className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+          <p className="rounded-lg border border-sage bg-sage-light/60 p-3 text-sm text-forest">
             Resident registration, room management, lottery draw and audit records are available only to authenticated administrators.
           </p>
           {notice ? <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm font-semibold text-orange-800">{notice}</div> : null}
@@ -92,7 +92,7 @@ export function AdminLogin({ isAdmin, onLogin, onLogout, notice }: AdminLoginPro
             </div>
           ) : null}
           <button
-            className="focus-ring w-full rounded-lg bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800 disabled:bg-slate-400"
+            className="focus-ring w-full rounded-lg bg-earth px-4 py-3 font-semibold text-white hover:bg-forest disabled:bg-slate-400"
             disabled={loading}
             type="submit"
           >
@@ -110,7 +110,7 @@ export function AdminLogin({ isAdmin, onLogin, onLogout, notice }: AdminLoginPro
         </form>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-2xl font-bold text-navy">Admin Capabilities</h2>
           <StatusPill label={isAdmin ? "Admin session active" : "Admin access required"} tone={isAdmin ? "green" : "orange"} />

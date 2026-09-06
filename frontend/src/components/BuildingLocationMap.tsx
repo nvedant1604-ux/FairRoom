@@ -554,8 +554,8 @@ export function BuildingLocationMap({
 
   if (testMode) {
     return (
-      <div className="map-surface flex h-full min-h-[280px] flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 p-6 text-center" data-testid="map-test-mode">
-        <MapPin aria-hidden="true" className="h-9 w-9 text-blue-700" />
+      <div className="map-surface flex h-full min-h-[280px] flex-col items-center justify-center bg-gradient-to-br from-sage-light to-cream p-6 text-center" data-testid="map-test-mode">
+        <MapPin aria-hidden="true" className="h-9 w-9 text-earth" />
         <p className="mt-3 text-lg font-bold text-navy">Map Test Mode</p>
         <p className="mt-1 font-semibold text-slate-700">{buildingName}</p>
         <p className="mt-1 text-sm text-slate-600" data-testid="map-test-coordinates">
@@ -565,7 +565,7 @@ export function BuildingLocationMap({
           <div className="mt-4 w-full max-w-md rounded-lg bg-white/90 p-3 shadow-sm">
             <button
               aria-label="Find Location from Address"
-              className="focus-ring w-full rounded-md bg-blue-700 px-3 py-2 text-sm font-bold text-white disabled:bg-slate-400"
+              className="focus-ring w-full rounded-md bg-earth px-3 py-2 text-sm font-bold text-white hover:bg-forest disabled:bg-slate-400"
               disabled={lookupBusy}
               onClick={() => void findAddress()}
               type="button"
@@ -625,7 +625,7 @@ export function BuildingLocationMap({
       {state === "ready" && coordinatesValid ? (
         <button
           aria-label={`Re-centre map on ${buildingName}`}
-          className="focus-ring absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-bold text-blue-800 shadow-lg"
+          className="focus-ring absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-bold text-forest shadow-lg"
           onClick={recenter}
           type="button"
         >
@@ -638,7 +638,7 @@ export function BuildingLocationMap({
           <p className="text-xs font-semibold text-slate-700">Click the map or drag the marker to select a location.</p>
           <button
             aria-label="Find Location from Address"
-            className="focus-ring mt-2 inline-flex w-full items-center justify-center gap-2 rounded-md bg-blue-700 px-3 py-2 text-xs font-bold text-white hover:bg-blue-800 disabled:bg-slate-400"
+            className="focus-ring mt-2 inline-flex w-full items-center justify-center gap-2 rounded-md bg-earth px-3 py-2 text-xs font-bold text-white hover:bg-forest disabled:bg-slate-400"
             disabled={lookupBusy}
             onClick={() => void findAddress()}
             type="button"
