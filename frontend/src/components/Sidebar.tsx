@@ -40,7 +40,8 @@ const navigationGroups: Array<{ label: string; items: NavigationItem[] }> = [
     label: "Management",
     items: [
       { key: "residents", label: "Resident Registration", icon: Users, protected: true },
-      { key: "rooms", label: "Room Management", icon: BarChart3, protected: true }
+      { key: "rooms", label: "Room Management", icon: BarChart3, protected: true },
+      { key: "eligibility", label: "Eligibility Criteria", icon: ListChecks, protected: true }
     ]
   },
   {

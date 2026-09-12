@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import os
+import json
 import re
 import secrets
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import (
@@ -29,10 +30,12 @@ from .database import (
     HISTORY_RULES,
     _snapshot_allocations,
 )
+from .auth import require_admin
+from .eligibility_api import router as eligibility_router
 from .fairness import detect_data_issues, fairness_score, fairness_status, run_lottery, run_lottery_cycle
 from .reporting import allocation_rows, allocations_csv, report_payload, simple_pdf
-from .schemas import AdminLogin, BuildingCreate, BuildingUpdate, ChatRequest, ResidentCreate, RoomCreate, DrawCycleCreate, CycleResidentChange, CycleRoomChange, CycleCancel, EligibilityRuleCreate
-from .eligibility import RULE_TYPES, active_rules, evaluate_building, evaluate_resident, save_cycle_evaluations, validate_rule
+from .schemas import AdminLogin, BuildingCreate, BuildingUpdate, ChatRequest, ResidentCreate, RoomCreate, DrawCycleCreate, CycleResidentChange, CycleRoomChange, CycleCancel
+from .eligibility import active_rule_set, rule_set_detail, evaluate_building, evaluate_resident, save_cycle_evaluations
 
 app = FastAPI(
     title="FairRoom — Intelligent Housing Allocation System API",
@@ -52,22 +55,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(eligibility_router)
 
 
 @app.on_event("startup")
 def startup() -> None:
     init_db()
     insert_sample_data()
-
-
-def require_admin(authorization: Annotated[str | None, Header()] = None) -> str:
-    token = authorization.removeprefix("Bearer ").strip() if authorization else ""
-    with get_connection() as conn:
-        stored = get_setting(conn, "admin_token")
-        email = get_setting(conn, "admin_email", "Admin")
-    if not stored or not token or not secrets.compare_digest(token, stored):
-        raise HTTPException(status_code=401, detail="Admin session is missing or expired. Please log in again.")
-    return email
 
 
 def _building(conn: Any, building_id: int | None) -> Any:
@@ -305,7 +299,9 @@ def demo_reset(building_id: int | None = None, admin: str = Depends(require_admi
 def list_residents(building_id: int | None = None) -> list[dict[str, Any]]:
     with get_connection() as conn:
         building_id = _building(conn, building_id)["id"]
-        return rows_to_dicts(conn.execute("SELECT * FROM residents WHERE building_id=? ORDER BY id DESC", (building_id,)).fetchall())
+        return rows_to_dicts(conn.execute("""SELECT id,building_id,full_name,aadhaar_masked,old_room_number,family_members,
+            contact_number,priority_category,building_wing,document_name,consent,verification_status,created_at
+            FROM residents WHERE building_id=? ORDER BY id DESC""", (building_id,)).fetchall())
 
 
 @app.post("/api/buildings/{building_id}/residents")
@@ -340,9 +336,9 @@ def create_resident(payload: ResidentCreate, building_id: int | None = None, adm
             INSERT INTO residents (
                 building_id, full_name, aadhaar_masked, aadhaar_hash, old_room_number, family_members,
                 contact_number, priority_category, building_wing, document_name, consent,
-                verification_status, created_at
+                verification_status, created_at, date_of_birth, residency_start_date, resident_category, annual_income
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending Verification', ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending Verification', ?, ?, ?, ?, ?)
             """,
             (
                 building_id, payload.full_name.strip(),
@@ -355,7 +351,8 @@ def create_resident(payload: ResidentCreate, building_id: int | None = None, adm
                 payload.building_wing.strip().upper(),
                 payload.document_name,
                 1,
-                utc_now(),
+                utc_now(), payload.date_of_birth, payload.residency_start_date,
+                payload.resident_category, payload.annual_income,
             ),
         )
         add_audit(
@@ -449,6 +446,8 @@ def start_lottery(building_id: int | None = None, admin: str = Depends(require_a
         existing = conn.execute("SELECT COUNT(*) count FROM allocations WHERE building_id=?", (building_id,)).fetchone()["count"]
         if existing:
             result = run_lottery(conn, building_id, admin); result["allocations"] = allocation_rows(conn, building_id); return result
+        evaluation = evaluate_building(conn, building_id)
+        eligible_ids = {item["resident_id"] for item in evaluation["evaluations"] if item["eligible"]}
         draw_number = conn.execute("SELECT COALESCE(MAX(draw_number),0)+1 number FROM lottery_draws WHERE building_id=?", (building_id,)).fetchone()["number"]
         now = utc_now(); reference = f"B{building_id}-{now[:4]}-DRAW-{draw_number:03d}"
         totals = {
@@ -460,9 +459,14 @@ def start_lottery(building_id: int | None = None, admin: str = Depends(require_a
         draw_cursor = conn.execute("""INSERT INTO lottery_draws(building_id,draw_number,draw_reference,draw_name,status,algorithm_version,total_residents,total_verified_residents,total_rooms,total_available_rooms,started_at,performed_by_admin,building_name_snapshot,society_name_snapshot,project_name_snapshot,address_snapshot,rules_snapshot,created_at) VALUES(?,?,?,?,'In Progress','1.0',?,?,?,?,?,?,?,?,?,?,?,?)""",(building_id,draw_number,reference,f"Draw {draw_number}",totals["residents"],totals["verified"],totals["rooms"],totals["available"],now,admin,building["building_name"],building["society_name"],building["redevelopment_project_name"],building["full_address"],HISTORY_RULES,now))
         draw_id = draw_cursor.lastrowid
         try:
-            result = run_lottery(conn, building_id, admin)
+            result = run_lottery(conn, building_id, admin, eligible_ids if evaluation["rule_set"] else None)
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+        save_cycle_evaluations(conn, building_id, draw_id, evaluation)
+        version = evaluation["rule_set"]["version"] if evaluation["rule_set"] else None
+        add_audit(conn, "Eligibility criteria applied to draw", admin,
+                  f"Version {version if version is not None else 'fallback'}; {len(eligible_ids)} eligible, {evaluation['summary']['total_ineligible']} ineligible.",
+                  building_id=building_id, draw_id=draw_id)
         _snapshot_allocations(conn, building_id, draw_id, admin)
         conn.execute("UPDATE allocations SET draw_id=? WHERE building_id=? AND draw_id IS NULL",(draw_id,building_id))
         allocated = conn.execute("SELECT COUNT(*) count FROM draw_allocations WHERE draw_id=? AND allocation_status='Allocated'",(draw_id,)).fetchone()["count"]
@@ -525,9 +529,21 @@ def export_pdf(building_id: int | None = None) -> Response:
         f"Remaining rooms: {report['totals']['remaining_rooms']}",
         f"Fairness score: {report['totals']['fairness_score']}",
         f"Lottery seed: {report['lottery_seed']}",
+        f"Lottery mode: {report.get('lottery_mode') or 'Full Allocation'}",
+        f"Winners: {(report.get('draw_outcomes') or {}).get('winners', 0)}",
+        f"Not selected: {(report.get('draw_outcomes') or {}).get('not_selected', 0)}",
+        f"Waiting list: {(report.get('draw_outcomes') or {}).get('waiting_list', 0)}",
+        f"Eligibility criteria: {report['eligibility']['rule_set_name'] or 'verification and consent fallback'}",
+        f"Eligibility version: {report['eligibility']['rule_version'] or 'fallback'}",
+        f"Eligible: {report['eligibility']['eligible_count'] if report['eligibility']['eligible_count'] is not None else 'Not recorded'}",
+        f"Ineligible: {report['eligibility']['ineligible_count'] if report['eligibility']['ineligible_count'] is not None else 'Not recorded'}",
         "Rules: verified residents only, locked seed, no manual override.",
         "AI role: validation, duplicate checks, explanations, and audit report generation.",
     ]
+    for rule in report["eligibility"]["rules"][:8]:
+        lines.append(f"Eligibility rule: {rule['name']} ({rule['category']}) {rule['field']} {rule['operator']} {rule['value'] or ''}")
+    for name, count in list(report["eligibility"]["ineligibility_reasons"].items())[:5]:
+        lines.append(f"Ineligibility reason: {name} ({count})")
     for allocation in report["allocations"][:20]:
         lines.append(
             f"{allocation['full_name']} | {allocation['old_room_number']} -> {allocation['new_room_number']} | {allocation['priority_category']}"
@@ -551,6 +567,7 @@ def export_certificate_pdf(building_id: int | None = None) -> Response:
         f"Project: {society.get('redevelopment_project_name', 'Not configured')}",
         f"Lottery date and time: {report.get('lottery_completed_at') or 'Not completed yet'}",
         f"Lottery seed: {report['lottery_seed']}",
+        f"Eligibility version: {report['eligibility']['rule_version'] or 'fallback'}",
         f"Total residents: {report['totals']['total_residents']}",
         f"Total rooms: {report['totals']['total_rooms']}",
         f"Total allocated: {report['totals']['total_allocated']}",
@@ -588,15 +605,16 @@ def create_draw_cycle(building_id: int, payload: DrawCycleCreate, admin: str = D
         now = utc_now(); reference = f"B{building_id}-{now[:4]}-DRAW-{number:03d}"
         cur = conn.execute("""INSERT INTO lottery_draws(building_id,draw_number,draw_reference,draw_name,phase_name,status,algorithm_version,performed_by_admin,building_name_snapshot,society_name_snapshot,project_name_snapshot,address_snapshot,rules_snapshot,creation_reason,planned_draw_date,notes,lottery_mode,waiting_list_enabled,created_at) VALUES(?,?,?,?,?,'Preparing','1.0',?,?,?,?,?,?,?,?,?,?,?,?)""", (building_id,number,reference,payload.draw_name,payload.phase_name,admin,building["building_name"],building["society_name"],building["redevelopment_project_name"],building["full_address"],HISTORY_RULES,payload.reason,payload.planned_draw_date,payload.notes,payload.lottery_mode,int(payload.waiting_list_enabled),now))
         draw_id = cur.lastrowid
+        eligibility = {item["resident_id"]: item for item in evaluate_building(conn, building_id)["evaluations"]}
         residents = conn.execute("SELECT * FROM residents WHERE building_id=?", (building_id,)).fetchall()
         for resident in residents:
             allocated = conn.execute("SELECT 1 FROM draw_allocations WHERE building_id=? AND resident_id=? AND allocation_status IN ('Allocated','Winner')", (building_id,resident["id"])).fetchone()
-            if resident["verification_status"] == "Verified" and not allocated:
-                status, inc, exc = "Eligible", "Verified and unallocated; suggested automatically.", None
-            elif allocated:
+            if allocated:
                 status, inc, exc = "Already Allocated", None, "Resident received a room in an earlier completed draw."
+            elif eligibility[resident["id"]]["eligible"]:
+                status, inc, exc = "Eligible", "Verified, policy eligible, and unallocated; suggested automatically.", None
             else:
-                status, inc, exc = resident["verification_status"], None, f"Resident status is {resident['verification_status']}."
+                status, inc, exc = "Ineligible", None, eligibility[resident["id"]]["explanation"]
             conn.execute("""INSERT INTO draw_cycle_residents(draw_id,building_id,resident_id,eligibility_status,inclusion_reason,exclusion_reason,priority_snapshot,old_room_snapshot,verification_status_snapshot,added_by_admin,added_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)""", (draw_id,building_id,resident["id"],status,inc,exc,resident["priority_category"],resident["old_room_number"],resident["verification_status"],admin,now))
         for room in conn.execute("SELECT * FROM rooms WHERE building_id=?", (building_id,)).fetchall():
             used = conn.execute("SELECT 1 FROM draw_allocations WHERE building_id=? AND room_id=? AND allocation_status IN ('Allocated','Winner')", (building_id,room["id"])).fetchone()
@@ -638,6 +656,11 @@ def cycle_resident(building_id:int,draw_id:int,payload:CycleResidentChange,admin
         if not resident: raise HTTPException(status_code=404,detail="Resident not found for this building.")
         entry=conn.execute("SELECT * FROM draw_cycle_residents WHERE draw_id=? AND resident_id=?",(draw_id,payload.resident_id)).fetchone()
         if resident["verification_status"]!="Verified" and payload.include: raise HTTPException(status_code=409,detail="Only verified residents may be included.")
+        if payload.include:
+            current = active_rule_set(conn, building_id)
+            result = evaluate_resident(dict(resident), rule_set_detail(conn, current) if current else None)
+            if not result["eligible"]:
+                raise HTTPException(status_code=409, detail=f"Resident does not meet current eligibility criteria: {result['explanation']}")
         allocated=conn.execute("SELECT 1 FROM draw_allocations WHERE building_id=? AND resident_id=? AND allocation_status IN ('Allocated','Winner')",(building_id,payload.resident_id)).fetchone()
         if allocated and payload.include:
             add_audit(conn,"Previously Allocated Resident Override Attempted",admin,f"Attempted to include {resident['full_name']}.",payload.reason,building_id,draw_id=draw_id,resident_id=payload.resident_id)
@@ -679,6 +702,12 @@ def confirm_cycle(building_id:int,draw_id:int,admin:str=Depends(require_admin))-
     with get_connection() as conn:
         cycle=_cycle(conn,building_id,draw_id)
         if cycle["status"]!="Preparing": raise HTTPException(status_code=409,detail="Only a Preparing draw cycle can be marked Ready.")
+        evaluation = evaluate_building(conn, building_id)
+        by_resident = {item["resident_id"]: item for item in evaluation["evaluations"]}
+        included_ids = [row["resident_id"] for row in conn.execute("SELECT resident_id FROM draw_cycle_residents WHERE draw_id=? AND eligibility_status='Included'", (draw_id,))]
+        invalid = [resident_id for resident_id in included_ids if not by_resident[resident_id]["eligible"]]
+        if invalid:
+            raise HTTPException(status_code=409, detail=f"{len(invalid)} included resident(s) no longer meet current eligibility criteria. Review the resident list before confirming.")
         residents=conn.execute("""SELECT r.full_name,r.verification_status FROM draw_cycle_residents cr JOIN residents r ON r.id=cr.resident_id WHERE cr.draw_id=? AND cr.eligibility_status='Included'""",(draw_id,)).fetchall()
         rooms=conn.execute("""SELECT rm.room_number,rm.status,rm.id FROM draw_cycle_rooms cm JOIN rooms rm ON rm.id=cm.room_id WHERE cm.draw_id=? AND cm.eligibility_status='Included'""",(draw_id,)).fetchall()
         if not residents: raise HTTPException(status_code=409,detail="Select at least one eligible resident.")
@@ -687,7 +716,14 @@ def confirm_cycle(building_id:int,draw_id:int,admin:str=Depends(require_admin))-
         if any(r["verification_status"]!="Verified" for r in residents): raise HTTPException(status_code=409,detail="Only verified residents may be included.")
         for room in rooms:
             if room["status"]!="Available" or conn.execute("SELECT 1 FROM draw_allocations WHERE building_id=? AND room_id=? AND allocation_status IN ('Allocated','Winner')",(building_id,room["id"])).fetchone(): raise HTTPException(status_code=409,detail=f"Room {room['room_number']} was already allocated in an earlier draw.")
+        save_cycle_evaluations(conn, building_id, draw_id, evaluation)
+        version = evaluation["rule_set"]["version"] if evaluation["rule_set"] else None
+        for result in evaluation["evaluations"]:
+            add_resident_history(conn, building_id, result["resident_id"], "Eligibility Evaluated", "Eligibility Evaluated",
+                                 f"{result['status']} under criteria version {version if version is not None else 'fallback'}. {result['explanation']}",
+                                 admin, draw_id, new_value=result["status"])
         conn.execute("UPDATE lottery_draws SET status='Ready',eligibility_confirmed_at=?,total_eligible=?,total_available_rooms=? WHERE id=?",(utc_now(),len(residents),len(rooms),draw_id))
+        add_audit(conn,"Eligibility criteria applied to draw",admin,f"Version {version if version is not None else 'fallback'}; {evaluation['summary']['total_eligible']} eligible, {evaluation['summary']['total_ineligible']} ineligible.",building_id=building_id,draw_id=draw_id)
         add_audit(conn,"Eligibility Confirmed",admin,"Final resident and room eligibility was confirmed.",building_id=building_id,draw_id=draw_id)
         if cycle["lottery_mode"] == "Competitive Lottery": add_audit(conn,"Competitive Lottery Readiness Confirmed",admin,f"{len(residents)} participants, {len(rooms)} rooms, {min(len(residents),len(rooms))} potential winners.",building_id=building_id,draw_id=draw_id)
         add_audit(conn,"Draw Cycle Marked Ready",admin,"Participant lists were locked.",building_id=building_id,draw_id=draw_id)
@@ -755,7 +791,13 @@ def resident_history(building_id:int,resident_id:int,admin:str=Depends(require_a
         if not resident: raise HTTPException(status_code=404,detail="Resident not found.")
         events=rows_to_dicts(conn.execute("SELECT * FROM resident_history_events WHERE building_id=? AND resident_id=? ORDER BY created_at,id",(building_id,resident_id)).fetchall())
         draws=rows_to_dicts(conn.execute("""SELECT cr.id,cr.eligibility_status,cr.inclusion_reason,cr.exclusion_reason,cr.priority_snapshot,ld.draw_number,ld.draw_reference,ld.draw_name,ld.completed_at,ld.lottery_seed,da.old_room_snapshot,da.allocated_room_snapshot,COALESCE(da.allocation_status,CASE WHEN cr.eligibility_status='Included' THEN 'Pending' ELSE cr.eligibility_status END) allocation_status,da.fairness_score,da.ai_explanation FROM draw_cycle_residents cr JOIN lottery_draws ld ON ld.id=cr.draw_id LEFT JOIN draw_allocations da ON da.draw_id=cr.draw_id AND da.resident_id=cr.resident_id WHERE cr.building_id=? AND cr.resident_id=? UNION ALL SELECT da.id,'Included',NULL,NULL,da.priority_category_snapshot,ld.draw_number,ld.draw_reference,ld.draw_name,ld.completed_at,ld.lottery_seed,da.old_room_snapshot,da.allocated_room_snapshot,da.allocation_status,da.fairness_score,da.ai_explanation FROM draw_allocations da JOIN lottery_draws ld ON ld.id=da.draw_id WHERE da.building_id=? AND da.resident_id=? AND NOT EXISTS(SELECT 1 FROM draw_cycle_residents cr WHERE cr.draw_id=da.draw_id AND cr.resident_id=da.resident_id) ORDER BY draw_number DESC""",(building_id,resident_id,building_id,resident_id)).fetchall())
-        return {"resident":row_to_dict(resident),"building":row_to_dict(building),"events":events,"draws":draws}
+        eligibility = rows_to_dicts(conn.execute("""SELECT ee.draw_id,ld.draw_reference,ld.rule_snapshot_version AS rule_version,
+            ee.status,ee.eligible,ee.priority_score,ee.results_json,ee.evaluated_at FROM eligibility_evaluations ee
+            JOIN lottery_draws ld ON ld.id=ee.draw_id WHERE ee.building_id=? AND ee.resident_id=?
+            ORDER BY ld.draw_number DESC""",(building_id,resident_id)).fetchall())
+        for item in eligibility:
+            item["result"] = json.loads(item.pop("results_json"))
+        return {"resident":row_to_dict(resident),"building":row_to_dict(building),"events":events,"draws":draws,"eligibility_history":eligibility}
 
 
 @app.get("/api/buildings/{building_id}/draws")
@@ -767,7 +809,8 @@ def draw_history(building_id:int,admin:str=Depends(require_admin))->list[dict[st
 def draw_details(building_id:int,draw_id:int,admin:str=Depends(require_admin))->dict[str,Any]:
     with get_connection() as conn:
         draw=_draw(conn,building_id,draw_id); allocations=rows_to_dicts(conn.execute("SELECT * FROM draw_allocations WHERE draw_id=? AND building_id=? ORDER BY CASE WHEN waiting_list_position IS NULL THEN 0 ELSE 1 END, waiting_list_position, id",(draw_id,building_id)).fetchall())
-        return {"draw":row_to_dict(draw),"allocations":allocations}
+        snapshot = conn.execute("SELECT rules_json FROM draw_rule_snapshots WHERE draw_id=? AND building_id=?", (draw_id, building_id)).fetchone()
+        return {"draw":row_to_dict(draw),"allocations":allocations,"eligibility_snapshot":json.loads(snapshot["rules_json"]) if snapshot else None}
 
 
 @app.get("/api/buildings/{building_id}/draws/{draw_id}/allocations")
@@ -784,8 +827,8 @@ def draw_audit(building_id:int,draw_id:int,admin:str=Depends(require_admin))->li
 
 def _history_csv(conn:Any,building_id:int,draw_id:int)->str:
     import csv,io
-    draw=_draw(conn,building_id,draw_id); out=io.StringIO(); writer=csv.writer(out); writer.writerow(["Building Snapshot","Society Snapshot","Project Snapshot","Address Snapshot","Draw Number","Draw Reference","Draw Name","Lottery Mode","Eligible Residents","Available Rooms","Winners","Not Selected","Waiting List","Lottery Seed","Algorithm Version","Resident","Old Room","Allocated Room","Status","Waiting-list Position","Priority","Fairness Score","AI Explanation"])
-    for row in conn.execute("SELECT * FROM draw_allocations WHERE draw_id=? AND building_id=? ORDER BY id",(draw_id,building_id)).fetchall(): writer.writerow([draw["building_name_snapshot"],draw["society_name_snapshot"],draw["project_name_snapshot"],draw["address_snapshot"],draw["draw_number"],draw["draw_reference"],draw["draw_name"],draw["lottery_mode"],draw["total_eligible"],draw["total_available_rooms"],draw["total_allocated"],draw["total_not_selected"],draw["total_waiting_list"],draw["lottery_seed"],draw["algorithm_version"],row["resident_name_snapshot"],row["old_room_snapshot"],row["allocated_room_snapshot"],row["allocation_status"],row["waiting_list_position"],row["priority_category_snapshot"],row["fairness_score"],row["ai_explanation"]])
+    draw=_draw(conn,building_id,draw_id); out=io.StringIO(); writer=csv.writer(out); writer.writerow(["Building Snapshot","Society Snapshot","Project Snapshot","Address Snapshot","Draw Number","Draw Reference","Draw Name","Lottery Mode","Eligible Residents","Available Rooms","Winners","Not Selected","Waiting List","Lottery Seed","Algorithm Version","Resident","Old Room","Allocated Room","Status","Waiting-list Position","Priority","Fairness Score","AI Explanation","Eligibility Version","Ineligible Residents"])
+    for row in conn.execute("SELECT * FROM draw_allocations WHERE draw_id=? AND building_id=? ORDER BY id",(draw_id,building_id)).fetchall(): writer.writerow([draw["building_name_snapshot"],draw["society_name_snapshot"],draw["project_name_snapshot"],draw["address_snapshot"],draw["draw_number"],draw["draw_reference"],draw["draw_name"],draw["lottery_mode"],draw["total_eligible"],draw["total_available_rooms"],draw["total_allocated"],draw["total_not_selected"],draw["total_waiting_list"],draw["lottery_seed"],draw["algorithm_version"],row["resident_name_snapshot"],row["old_room_snapshot"],row["allocated_room_snapshot"],row["allocation_status"],row["waiting_list_position"],row["priority_category_snapshot"],row["fairness_score"],row["ai_explanation"],draw["rule_snapshot_version"],draw["total_not_eligible"]])
     return out.getvalue()
 
 
@@ -796,7 +839,12 @@ def historical_csv(building_id:int,draw_id:int,admin:str=Depends(require_admin))
 
 
 def _history_pdf(conn:Any,building_id:int,draw_id:int,title:str)->bytes:
-    draw=_draw(conn,building_id,draw_id); rows=conn.execute("SELECT * FROM draw_allocations WHERE draw_id=? AND building_id=?",(draw_id,building_id)).fetchall(); lines=[f"Building: {draw['building_name_snapshot']}",f"Society: {draw['society_name_snapshot']}",f"Project: {draw['project_name_snapshot']}",f"Historical address: {draw['address_snapshot']}",f"Draw: {draw['draw_number']} - {draw['draw_reference']}",f"Draw name: {draw['draw_name']}",f"Lottery mode: {draw['lottery_mode']}",f"Eligible residents: {draw['total_eligible']}",f"Available rooms: {draw['total_available_rooms']}",f"Winners: {draw['total_allocated']}",f"Not selected: {draw['total_not_selected']}",f"Waiting list: {draw['total_waiting_list']}",f"Seed: {draw['lottery_seed']}",f"Algorithm: {draw['algorithm_version']}",f"Fairness: {draw['fairness_score']}",f"Completed: {draw['completed_at']}"]+[f"{r['resident_name_snapshot']} | {r['old_room_snapshot']} -> {r['allocated_room_snapshot'] or 'No room'} | {r['allocation_status']}" for r in rows]
+    draw=_draw(conn,building_id,draw_id); rows=conn.execute("SELECT * FROM draw_allocations WHERE draw_id=? AND building_id=?",(draw_id,building_id)).fetchall(); lines=[f"Building: {draw['building_name_snapshot']}",f"Society: {draw['society_name_snapshot']}",f"Project: {draw['project_name_snapshot']}",f"Historical address: {draw['address_snapshot']}",f"Draw: {draw['draw_number']} - {draw['draw_reference']}",f"Draw name: {draw['draw_name']}",f"Lottery mode: {draw['lottery_mode']}",f"Eligible residents: {draw['total_eligible']}",f"Ineligible residents: {draw['total_not_eligible']}",f"Eligibility criteria version: {draw['rule_snapshot_version'] or 'fallback / legacy'}",f"Available rooms: {draw['total_available_rooms']}",f"Winners: {draw['total_allocated']}",f"Not selected: {draw['total_not_selected']}",f"Waiting list: {draw['total_waiting_list']}",f"Seed: {draw['lottery_seed']}",f"Algorithm: {draw['algorithm_version']}",f"Fairness: {draw['fairness_score']}",f"Completed: {draw['completed_at']}"]
+    snapshot=conn.execute("SELECT rules_json FROM draw_rule_snapshots WHERE draw_id=? AND building_id=?",(draw_id,building_id)).fetchone()
+    if snapshot:
+        criteria=json.loads(snapshot["rules_json"])["rule_set"]
+        lines.extend(f"Rule: {rule['rule_name']} - {rule['field_name']} {rule['operator']} {rule['comparison_value'] or ''}" for rule in (criteria or {}).get("rules",[]) if rule["is_active"])
+    lines.extend(f"{r['resident_name_snapshot']} | {r['old_room_snapshot']} -> {r['allocated_room_snapshot'] or 'No room'} | {r['allocation_status']}" for r in rows)
     return simple_pdf(title,lines)
 
 

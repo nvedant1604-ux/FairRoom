@@ -95,7 +95,7 @@ export async function apiRequest<T>(
     } catch {
       message = response.statusText || message;
     }
-    if (response.status === 401 && path !== "/admin/login") {
+    if (response.status === 401 && path !== "/admin/login" && path !== "/admin/logout") {
       clearAdminToken();
       window.dispatchEvent(new CustomEvent("admin-session-expired"));
       message = "Your admin session has expired. Please log in again.";

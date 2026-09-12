@@ -23,6 +23,16 @@ Base URL during normal local use: `http://127.0.0.1:8000/api`. Protected endpoin
 | Residents | `POST /buildings/{building_id}/residents/{resident_id}/reject` | Yes | Mark rejected. |
 | Rooms | `GET /buildings/{building_id}/rooms` | No | Building rooms. |
 | Rooms | `POST /buildings/{building_id}/rooms` | Yes | Add room. |
+| Eligibility | `GET /buildings/{building_id}/eligibility/metadata` | Yes | Supported resident fields, types and operators. |
+| Eligibility | `GET /buildings/{building_id}/eligibility/rule-sets` | Yes | Building-specific version history. |
+| Eligibility | `GET .../rule-sets/current` | Yes | Active criteria or explicit no-rules fallback. |
+| Eligibility | `GET .../rule-sets/{rule_set_id}` | Yes | Version with its rules. |
+| Eligibility | `POST .../rule-sets` | Yes | Create a draft version, optionally copying another version in the same building. |
+| Eligibility | `PUT .../rule-sets/{rule_set_id}` | Yes | Edit draft metadata only. |
+| Eligibility | `POST/PUT/DELETE .../rule-sets/{rule_set_id}/rules[/{rule_id}]` | Yes | Add, edit or remove draft rules. |
+| Eligibility | `POST .../rule-sets/{rule_set_id}/activate` | Yes | Activate and freeze one version; previous active version becomes inactive. |
+| Eligibility | `GET .../residents/{resident_id}?rule_set_id=` | Yes | Non-mutating resident preview for active or chosen version. |
+| Eligibility | `POST .../evaluate-all?rule_set_id=` | Yes | Non-mutating building-wide preview and counts. |
 | Draw cycles | `POST /buildings/{building_id}/draw-cycles` | Yes | Create Preparing cycle from name, phase, reason, date and notes. |
 | Draw cycles | `GET /buildings/{building_id}/draw-cycles/{draw_id}` | Yes | Cycle, residents, rooms and totals. |
 | Draw cycles | `GET .../{draw_id}/eligibility` | Yes | Alias returning cycle setup data. |
@@ -31,7 +41,7 @@ Base URL during normal local use: `http://127.0.0.1:8000/api`. Protected endpoin
 | Draw cycles | `DELETE .../{draw_id}/residents/{resident_id}` | Yes | Exclude participant. |
 | Draw cycles | `POST .../{draw_id}/rooms` | Yes | Include/exclude room. |
 | Draw cycles | `DELETE .../{draw_id}/rooms/{room_id}` | Yes | Exclude room. |
-| Draw cycles | `POST .../{draw_id}/confirm` | Yes | Validate and mark Ready. |
+| Draw cycles | `POST .../{draw_id}/confirm` | Yes | Validate policy eligibility, snapshot version/results and mark Ready. |
 | Draw cycles | `POST .../{draw_id}/draw` | Yes | Run selected Ready cycle. |
 | Draw cycles | `POST .../{draw_id}/cancel` | Yes | Cancel Preparing/Ready cycle with reason and confirmation. |
 | Legacy lottery | `POST /buildings/{building_id}/lottery/draw` | Yes | Original first-draw path retained for compatibility. |
@@ -39,7 +49,7 @@ Base URL during normal local use: `http://127.0.0.1:8000/api`. Protected endpoin
 | Resident history | `GET /buildings/{building_id}/residents/history` | Yes | Search/list history summaries. |
 | Resident history | `GET /buildings/{building_id}/residents/{resident_id}/history` | Yes | Profile, events and all cycle participation. |
 | Draw history | `GET /buildings/{building_id}/draws` | Yes | All cycle statuses newest first. |
-| Draw history | `GET /buildings/{building_id}/draws/{draw_id}` | Yes | Draw metadata and snapshots. |
+| Draw history | `GET /buildings/{building_id}/draws/{draw_id}` | Yes | Draw metadata, allocations and immutable eligibility snapshot. |
 | Draw history | `GET .../{draw_id}/allocations` | Yes | Historical snapshots; `/residents` is an alias. |
 | Draw history | `GET .../{draw_id}/audit` | Yes | Audit window for draw. |
 | Draw history | `POST .../{draw_id}/archive` | Yes | Mark historical draw archived. |

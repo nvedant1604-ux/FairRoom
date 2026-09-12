@@ -54,6 +54,15 @@ export function TransparencyReport({ buildingId, report }: TransparencyReportPro
       </section>
 
       <section className="rounded-xl border border-sage bg-white p-5 shadow-soft sm:p-7">
+        <h3 className="text-xl font-bold text-navy">Eligibility Criteria</h3>
+        <p className="mt-2 text-sm text-slate-600">{report.eligibility.rule_set_name ? `${report.eligibility.rule_set_name} · Version ${report.eligibility.rule_version}` : "Verification and consent fallback"}</p>
+        <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-forest"><span className="rounded-lg bg-sage-light px-3 py-2">Eligible: {report.eligibility.eligible_count ?? "Not recorded"}</span><span className="rounded-lg bg-cream px-3 py-2">Ineligible: {report.eligibility.ineligible_count ?? "Not recorded"}</span></div>
+        {report.draw_outcomes?<p className="mt-3 text-sm text-slate-700">Latest draw: {report.lottery_mode || "Full Allocation"} · Winners {report.draw_outcomes.winners} · Not selected {report.draw_outcomes.not_selected} · Waiting list {report.draw_outcomes.waiting_list} · Seed {report.lottery_seed} · Fairness {report.totals.fairness_score}%</p>:null}
+        {report.eligibility.rules.length ? <ul className="mt-4 space-y-2 text-sm text-slate-700">{report.eligibility.rules.map((rule, index) => <li className="rounded-lg border border-sage p-3" key={`${rule.name}-${index}`}><span className="font-bold text-navy">{rule.name}</span> · {rule.category === "PRIORITY" ? `Priority (+${rule.points})` : "Hard eligibility"} · {rule.field} {rule.operator} {rule.value ?? ""}</li>)}</ul> : null}
+        {Object.keys(report.eligibility.ineligibility_reasons).length ? <p className="mt-3 text-sm text-slate-600">High-level failed rules: {Object.entries(report.eligibility.ineligibility_reasons).map(([name,count])=>`${name} (${count})`).join(", ")}</p> : null}
+        <p className="mt-3 text-sm text-slate-600">{report.eligibility.methodology}</p>
+      </section>
+      <section className="rounded-xl border border-sage bg-white p-5 shadow-soft sm:p-7">
         <div className="mx-auto max-w-5xl rounded-xl border border-sage bg-gradient-to-br from-white via-sage-light/55 to-cream p-5 shadow-soft sm:p-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex gap-4">

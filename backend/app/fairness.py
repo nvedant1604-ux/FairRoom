@@ -162,7 +162,7 @@ def build_allocation_explanation(resident: dict[str, Any], room: dict[str, Any],
     )
 
 
-def run_lottery(conn: sqlite3.Connection, building_id: int, performed_by: str = "Admin") -> dict[str, Any]:
+def run_lottery(conn: sqlite3.Connection, building_id: int, performed_by: str = "Admin", eligible_ids: set[int] | None = None) -> dict[str, Any]:
     existing_count = conn.execute("SELECT COUNT(*) AS count FROM allocations WHERE building_id=?", (building_id,)).fetchone()["count"]
     if existing_count:
         seed = get_setting(conn, "lottery_seed", "", building_id)
@@ -176,15 +176,17 @@ def run_lottery(conn: sqlite3.Connection, building_id: int, performed_by: str = 
     verified_count = conn.execute(
         "SELECT COUNT(*) AS count FROM residents WHERE building_id=? AND verification_status = 'Verified' AND consent = 1", (building_id,)
     ).fetchone()["count"]
+    if eligible_ids is not None:
+        verified_count = len(eligible_ids)
     available_count = conn.execute(
         "SELECT COUNT(*) AS count FROM rooms WHERE building_id=? AND status = 'Available'", (building_id,)
     ).fetchone()["count"]
     if verified_count == 0:
-        raise ValueError("Lottery cannot start because no verified residents are available.")
+        raise ValueError("Lottery cannot start because no eligible verified residents are available." if eligible_ids is not None else "Lottery cannot start because no verified residents are available.")
     if available_count == 0:
         raise ValueError("Lottery cannot start because no available rooms are available.")
     if verified_count > available_count:
-        raise ValueError("Lottery cannot start because there are more verified residents than available rooms.")
+        raise ValueError("Lottery cannot start because there are more eligible residents than available rooms." if eligible_ids is not None else "Lottery cannot start because there are more verified residents than available rooms.")
 
     seed = secrets.token_hex(8)
     set_setting(conn, "lottery_locked", "true", building_id)
@@ -206,6 +208,8 @@ def run_lottery(conn: sqlite3.Connection, building_id: int, performed_by: str = 
             """
         , (building_id,)).fetchall()
     )
+    if eligible_ids is not None:
+        verified_residents = [resident for resident in verified_residents if resident["id"] in eligible_ids]
     available_rooms = rows_to_dicts(
         conn.execute("SELECT * FROM rooms WHERE building_id=? AND status = 'Available'", (building_id,)).fetchall()
     )

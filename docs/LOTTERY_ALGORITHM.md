@@ -6,6 +6,8 @@ The implementation is in `backend/app/fairness.py`. It is a deterministic seeded
 
 The controlled-cycle function loads only residents marked `Included` in `draw_cycle_residents` and rooms marked `Included` in `draw_cycle_rooms`. Confirmation has already checked verification, availability, building ownership, previous room use and capacity. The legacy first-draw route filters verified residents with consent and available rooms directly.
 
+Before either route selects winners, the transparent eligibility engine evaluates the building's active criteria. Hard-rule failures exclude a resident; priority matches generate an auditable score only. If no criteria are active, verified residents with consent remain eligible as before. Draw confirmation snapshots the criteria version and each resident's evaluation. The established seeded lottery then receives only the eligible pool. Its priority-category ordering, deterministic shuffle, suitability choice and fairness calculation remain separate from eligibility scoring.
+
 ## Priority Order
 
 The current order is:
@@ -41,7 +43,7 @@ validate building and selected draw cycle
 require cycle status Ready
 load included verified residents
 load included available rooms
-reject empty lists or residents greater than rooms
+reject empty lists or, in Full Allocation mode, residents greater than rooms
 generate cryptographically random seed
 for each priority group in configured order:
     deterministically shuffle its residents using seed + group label

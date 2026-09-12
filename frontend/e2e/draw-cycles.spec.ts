@@ -1,5 +1,5 @@
 import { expect,test,type APIRequestContext } from "@playwright/test";
-import fs from "node:fs/promises";import path from "node:path";import {spawn,spawnSync} from "node:child_process";import http from "node:http";
+import path from "node:path";import {spawn,spawnSync} from "node:child_process";import http from "node:http";
 const API="http://127.0.0.1:8010/api";
 async function auth(r:APIRequestContext){const x=await r.post(`${API}/admin/login`,{data:{email:"admin@example.com",password:"admin123"}});return{Authorization:`Bearer ${(await x.json()).token}`}}
 const building=(name:string,pin:string)=>({building_name:name,society_name:`${name} Society`,redevelopment_project_name:`${name} Project`,full_address:`1 ${name} Road`,city:"Mumbai",district:"Mumbai City",state:"Maharashtra",pin_code:pin,number_of_wings:1,description:"Cycle E2E"});
@@ -22,5 +22,21 @@ test("building supports independent completed, cancelled and restart-safe draw c
  const csv1=await(await request.get(`${API}/buildings/${a.id}/draws/${d1.draw_id}/report.csv`,{headers:h})).text();const csv2=await(await request.get(`${API}/buildings/${a.id}/draws/${d2.draw_id}/report.csv`,{headers:h})).text();expect(csv1).toContain("Cycle Resident One");expect(csv1).not.toContain("Cycle Resident Two");expect(csv2).toContain("Cycle Resident Two");
  const d3=await createCycle(request,h,a.id,"Cancelled Phase");expect((await request.post(`${API}/buildings/${a.id}/draw-cycles/${d3.draw_id}/cancel`,{headers:h,data:{reason:"No longer required",confirmed:true}})).ok()).toBeTruthy();expect((await request.post(`${API}/buildings/${a.id}/draw-cycles/${d3.draw_id}/draw`,{headers:h})).status()).toBe(409);const cycles=await(await request.get(`${API}/buildings/${a.id}/draws`,{headers:h})).json();expect(cycles.find((x:{id:number})=>x.id===d3.draw_id).status).toBe("Cancelled");expect(await(await request.get(`${API}/buildings/${b.id}/draws`,{headers:h})).json()).toEqual([]);
  await page.goto("/admin-login");await page.getByLabel("Admin Email").fill("admin@example.com");await page.getByLabel("Password").fill("admin123");await page.getByRole("button",{name:"Login as Admin"}).click();await page.getByLabel("Current Building:").selectOption(String(a.id));await page.getByRole("button",{name:"Draw History",exact:true}).click();await expect(page.getByText(d2.draw_reference)).toBeVisible();
- const pidFile=path.resolve("test-results/servers.json");const pids=JSON.parse(await fs.readFile(pidFile,"utf8")) as number[];if(process.platform==="win32")spawnSync("taskkill",["/pid",String(pids[0]),"/T","/F"],{stdio:"ignore"});else process.kill(-pids[0],"SIGTERM");const database=path.resolve("test-results/ai-lottery-e2e.sqlite");const backend=spawn("python",["-m","uvicorn","backend.app.main:app","--host","127.0.0.1","--port","8010"],{cwd:path.resolve(".."),detached:true,env:{...process.env,AI_LOTTERY_DB:database},stdio:"ignore"});backend.unref();pids[0]=backend.pid!;await fs.writeFile(pidFile,JSON.stringify(pids));for(let i=0;i<30&&!await ready(`${API}/health`);i++)await new Promise(x=>setTimeout(x,250));const h2=await auth(request);expect(await(await request.get(`${API}/buildings/${a.id}/draws`,{headers:h2})).json()).toHaveLength(3);
+ const secondApi="http://127.0.0.1:8011/api";
+ const database=path.resolve("test-results/ai-lottery-e2e.sqlite");
+ const backend=spawn("python",["-m","uvicorn","backend.app.main:app","--host","127.0.0.1","--port","8011"],{
+   cwd:path.resolve(".."),detached:true,env:{...process.env,AI_LOTTERY_DB:database},stdio:"ignore"
+ });
+ backend.unref();
+ try {
+   for(let i=0;i<40&&!await ready(`${secondApi}/health`);i++)await new Promise(x=>setTimeout(x,250));
+   expect(await ready(`${secondApi}/health`)).toBeTruthy();
+   const login=await request.post(`${secondApi}/admin/login`,{data:{email:"admin@example.com",password:"admin123"}});
+   expect(login.ok()).toBeTruthy();
+   const h2={Authorization:`Bearer ${(await login.json()).token}`};
+   expect(await(await request.get(`${secondApi}/buildings/${a.id}/draws`,{headers:h2})).json()).toHaveLength(3);
+ } finally {
+   if(backend.pid && process.platform==="win32")spawnSync("powershell.exe",["-NoProfile","-Command",`Stop-Process -Id ${backend.pid} -Force -ErrorAction SilentlyContinue`],{stdio:"ignore",windowsHide:true});
+   else if(backend.pid)process.kill(-backend.pid,"SIGTERM");
+ }
 });

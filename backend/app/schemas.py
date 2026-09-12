@@ -21,6 +21,20 @@ class ResidentCreate(BaseModel):
     building_wing: str = Field(min_length=1, max_length=20)
     document_name: str | None = None
     consent: bool
+    date_of_birth: str | None = None
+    residency_start_date: str | None = None
+    resident_category: str | None = Field(default=None, max_length=100)
+    annual_income: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+
+    @field_validator("date_of_birth", "residency_start_date")
+    @classmethod
+    def valid_policy_date(cls, value: str | None) -> str | None:
+        if value:
+            from datetime import date
+            parsed = date.fromisoformat(value)
+            if parsed > date.today():
+                raise ValueError("Date cannot be in the future.")
+        return value
 
     @field_validator("aadhaar_number")
     @classmethod
@@ -146,6 +160,29 @@ class EligibilityRuleCreate(BaseModel):
     priority_points: int = Field(default=0, ge=0, le=10000)
     is_required: bool = True
     is_active: bool = True
+
+
+class EligibilityRuleSetCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    description: str = Field(default="", max_length=500)
+    copy_from_id: int | None = None
+
+
+class EligibilityRuleSetUpdate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    description: str = Field(default="", max_length=500)
+
+
+class EligibilityPolicyRule(BaseModel):
+    rule_name: str = Field(min_length=2, max_length=120)
+    category: Literal["HARD_ELIGIBILITY", "PRIORITY"]
+    field_name: str
+    operator: str
+    comparison_value: str | None = Field(default=None, max_length=100)
+    priority_points: int = Field(default=0, ge=0, le=10000)
+    is_active: bool = True
+    explanation: str = Field(default="", max_length=500)
+    sort_order: int = Field(default=100, ge=0, le=10000)
 
 
 class CycleResidentChange(BaseModel):

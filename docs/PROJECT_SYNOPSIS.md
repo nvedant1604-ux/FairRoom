@@ -29,6 +29,8 @@ FairRoom is a local web application that supports transparent allocation with bu
 
 An administrator signs in, selects a building, registers and verifies residents, enters rooms, and creates a controlled draw cycle. The administrator reviews suggested eligibility lists and marks the cycle Ready. At draw time, the backend generates a secure seed and uses that seed for deterministic shuffling within ordered priority groups. Suitable rooms are preferred where applicable. Results are stored in the current allocation view and in permanent draw snapshots.
 
+Before readiness confirmation, a building-specific transparent rule engine evaluates hard eligibility and priority conditions. Hard failures exclude residents; priority points are disclosed but do not select winners. Each completed draw retains the exact rule-set version, criteria snapshot and resident evaluations. An administrator can create a new version without changing older results. With no configured rules, the original verification-and-consent requirement remains in effect.
+
 ## Technology Stack
 
 - React 19, TypeScript, Vite and Tailwind CSS frontend
@@ -45,6 +47,7 @@ An administrator signs in, selects a building, registers and verifies residents,
 - Resident registration and verification
 - Room inventory and suitability
 - Draw-cycle preparation and eligibility
+- Versioned eligibility criteria, explanations and preview
 - Seeded fairness engine
 - Allocation results and explanations
 - Resident history, draw history and audits

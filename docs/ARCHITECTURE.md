@@ -11,6 +11,7 @@
 - **Authentication layer:** validates local credentials and server-side session tokens.
 - **Building-scoped services:** every managed resource is checked against its building.
 - **Fairness engine:** performs validation, seeded shuffling, priority grouping, suitability matching and scoring.
+- **Eligibility engine:** evaluates building-specific hard and priority rules before draw participation, with explanations and immutable version snapshots.
 - **Reporting module:** creates current reports, CSV files, PDFs and certificates.
 - **SQLite:** persists operational state and immutable snapshots.
 - **Audit system:** records important administrative and draw actions.
@@ -24,7 +25,8 @@ flowchart LR
   U[Resident / Administrator] --> F[React + TypeScript Frontend]
   F --> A[FastAPI Backend]
   F -. optional, lazy .-> G[Google Maps JavaScript API]
-  A --> E[Fairness Engine]
+  A --> P[Transparent Eligibility Engine]
+  P --> E[Existing Seeded Lottery and Fairness Engine]
   A --> D[(SQLite Database)]
   E --> D
   A --> R[CSV, PDF and Certificates]
@@ -48,9 +50,9 @@ The token is stored in browser local storage for the demonstration session. The 
 ```mermaid
 flowchart TD
   B[Select Building] --> C[Create Draw Cycle]
-  C --> ER[Select Eligible Residents]
+  C --> ER[Evaluate Active Building Criteria and Select Eligible Residents]
   ER --> RM[Select Eligible Rooms]
-  RM --> Q[Confirm Eligibility]
+  RM --> Q[Confirm Eligibility and Snapshot Rule Version and Results]
   Q --> S[Generate Seed]
   S --> A[Run Fair Allocation]
   A --> HS[Store Immutable Snapshots]
@@ -79,3 +81,5 @@ The API key is read only from Vite environment configuration. It is never stored
 ## Data and History Boundaries
 
 Current allocations support operational screens. `draw_allocations` stores historical values such as names, masked identifiers and room details so later edits cannot rewrite the past. Completed draws reject changes. Preparing cycles remain editable; Ready and In Progress cycles lock their participant lists.
+
+The eligibility configuration is scoped to a building. Drafts can be edited; activation freezes a version. At confirmation, `draw_rule_snapshots` stores the full criteria and summary, while `eligibility_evaluations` stores each resident's decision and score. Later policy changes do not recalculate historical results. Priority points are explanatory and never replace the lottery's existing category order, seed, suitability logic or fairness score.

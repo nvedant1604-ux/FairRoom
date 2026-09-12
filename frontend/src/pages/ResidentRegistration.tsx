@@ -33,6 +33,10 @@ interface ResidentForm {
   building_wing: string;
   document_name: string;
   consent: boolean;
+  date_of_birth: string;
+  residency_start_date: string;
+  resident_category: string;
+  annual_income: string;
 }
 
 const initialForm: ResidentForm = {
@@ -44,7 +48,11 @@ const initialForm: ResidentForm = {
   priority_category: "General",
   building_wing: "A",
   document_name: "",
-  consent: false
+  consent: false,
+  date_of_birth: "",
+  residency_start_date: "",
+  resident_category: "",
+  annual_income: ""
 };
 
 export function ResidentRegistration({ buildingId, buildingName, residents, isAdmin, onRefresh }: ResidentRegistrationProps) {
@@ -64,7 +72,10 @@ export function ResidentRegistration({ buildingId, buildingName, residents, isAd
     try {
       const response = await apiRequest<{ resident: Resident; warnings: string[] }>(`/buildings/${buildingId}/residents`, {
         method: "POST",
-        body: JSON.stringify(form)
+        body: JSON.stringify({ ...form, date_of_birth: form.date_of_birth || null,
+          residency_start_date: form.residency_start_date || null,
+          resident_category: form.resident_category || null,
+          annual_income: form.annual_income === "" ? null : Number(form.annual_income) })
       });
       setMessage(`${response.resident.full_name} saved with masked Aadhaar ${response.resident.aadhaar_masked}.`);
       setWarnings(response.warnings);
@@ -143,6 +154,12 @@ export function ResidentRegistration({ buildingId, buildingName, residents, isAd
                 required
               />
             </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div><label className="text-sm font-semibold text-slate-700" htmlFor="date_of_birth">Date of Birth (optional)</label><input className="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" id="date_of_birth" type="date" value={form.date_of_birth} onChange={event => setForm({...form,date_of_birth:event.target.value})}/></div>
+            <div><label className="text-sm font-semibold text-slate-700" htmlFor="residency_start_date">Residency Start Date (optional)</label><input className="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" id="residency_start_date" type="date" value={form.residency_start_date} onChange={event => setForm({...form,residency_start_date:event.target.value})}/></div>
+            <div><label className="text-sm font-semibold text-slate-700" htmlFor="resident_category">Policy Category (optional)</label><input className="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" id="resident_category" value={form.resident_category} onChange={event => setForm({...form,resident_category:event.target.value})}/></div>
+            <div><label className="text-sm font-semibold text-slate-700" htmlFor="annual_income">Annual Income (optional, admin only)</label><input className="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" id="annual_income" min="0" type="number" step="0.01" value={form.annual_income} onChange={event => setForm({...form,annual_income:event.target.value})}/></div>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div>

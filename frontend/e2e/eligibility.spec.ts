@@ -1,0 +1,88 @@
+import { expect, test } from "@playwright/test";
+
+const API = "http://127.0.0.1:8010/api";
+const buildingPayload = (name:string) => ({building_name:name,society_name:`${name} Society`,redevelopment_project_name:"Eligibility Project",
+  full_address:"1 Test Road",city:"Mumbai",district:"Mumbai",state:"Maharashtra",pin_code:"400001",number_of_wings:1,description:"Eligibility E2E"});
+const residentPayload = (name:string,id:string,oldRoom:string,members:number) => ({full_name:name,aadhaar_number:id,old_room_number:oldRoom,
+  family_members:members,contact_number:"9456789012",priority_category:"General",building_wing:"A",document_name:null,consent:true});
+
+test("admin criteria versions stay separate from a completed draw and other buildings", async ({page,request}) => {
+  const login = await request.post(`${API}/admin/login`,{data:{email:"admin@example.com",password:"admin123"}});
+  const firstToken = (await login.json()).token;
+  const initialHeaders = {Authorization:`Bearer ${firstToken}`};
+  const unique = Date.now();
+  const aResponse = await request.post(`${API}/buildings`,{headers:initialHeaders,data:buildingPayload(`Eligibility A ${unique}`)});
+  const bResponse = await request.post(`${API}/buildings`,{headers:initialHeaders,data:buildingPayload(`Eligibility B ${unique}`)});
+  expect(aResponse.ok()).toBeTruthy(); expect(bResponse.ok()).toBeTruthy();
+  const a = (await aResponse.json()).building.id as number;
+  const b = (await bResponse.json()).building.id as number;
+  expect((await request.post(`${API}/buildings/${a}/eligibility/rule-sets`,{data:{name:"Unauthorized"}})).status()).toBe(401);
+  const person = await request.post(`${API}/buildings/${a}/residents`,{headers:initialHeaders,data:residentPayload(`Policy Resident ${unique}`,`8911${unique}`,`POL-${unique}`,4)});
+  expect(person.ok(),await person.text()).toBeTruthy();
+  const residentId = (await person.json()).resident.id as number;
+  expect((await request.post(`${API}/buildings/${a}/residents/${residentId}/verify`,{headers:initialHeaders})).ok()).toBeTruthy();
+  const room = await request.post(`${API}/buildings/${a}/rooms`,{headers:initialHeaders,data:{room_number:`POL-${unique}`,wing:"A",floor:1,size:"650 sq ft",status:"Available",suitable_for:"General"}});
+  expect(room.ok()).toBeTruthy(); const roomId = (await room.json()).id as number;
+
+  await page.goto("/eligibility");
+  await expect(page).toHaveURL(/\/admin-login$/);
+  await page.getByLabel("Admin Email").fill("admin@example.com");
+  await page.getByLabel("Password").fill("admin123");
+  await page.getByRole("button",{name:"Login as Admin"}).click();
+  await expect(page).toHaveURL(/\/eligibility$/);
+  const token = await page.evaluate(() => localStorage.getItem("ai_lottery_admin_token"));
+  const headers = {Authorization:`Bearer ${token}`};
+  await page.getByLabel("Current Building:").selectOption(String(a));
+  await expect(page.getByRole("heading",{name:"No eligibility criteria configured"})).toBeVisible();
+  await page.getByRole("button",{name:"Create Rule Set"}).click();
+  await page.getByLabel("Rule Set Name").fill("Policy V1");
+  await page.getByRole("button",{name:"Save Draft Version"}).click();
+  await expect(page.getByText("Draft version 1 created.")).toBeVisible();
+  const versionOne = (await(await request.get(`${API}/buildings/${a}/eligibility/rule-sets`,{headers})).json())[0].id as number;
+  expect((await request.post(`${API}/buildings/${a}/eligibility/rule-sets/${versionOne}/rules`,{headers,data:{rule_name:"Malformed",category:"HARD_ELIGIBILITY",field_name:"annual_income",operator:"contains",comparison_value:"50000"}})).status()).toBe(422);
+  await page.getByLabel("Rule Name").fill("Household minimum");
+  await page.getByLabel("Resident Field").selectOption("family_members");
+  await page.getByLabel("Operator").selectOption("greater than or equal");
+  await page.getByLabel("Value").fill("4");
+  await page.getByLabel("Explanation").fill("At least four household members.");
+  await page.getByRole("button",{name:"Add Rule",exact:true}).click();
+  await expect(page.getByText("Household minimum",{exact:true})).toBeVisible();
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button",{name:"Activate Version"}).click();
+  await expect(page.getByText("Criteria activated.")).toBeVisible();
+  await page.getByLabel("Select resident").selectOption(String(residentId));
+  await page.getByRole("button",{name:"Preview Resident"}).click();
+  await expect(page.getByText("Resident satisfies all mandatory eligibility requirements.")).toBeVisible();
+  await page.getByRole("button",{name:"Evaluate All"}).click();
+  await expect(page.getByText("Evaluated",{exact:true})).toBeVisible();
+  const other = await request.get(`${API}/buildings/${b}/eligibility/rule-sets/current`,{headers});
+  expect((await other.json()).rule_set).toBeNull();
+
+  const cycle = await request.post(`${API}/buildings/${a}/draw-cycles`,{headers,data:{draw_name:"Eligibility Draw",reason:"Eligibility E2E",lottery_mode:"Full Allocation"}});
+  expect(cycle.ok(),await cycle.text()).toBeTruthy(); const did = (await cycle.json()).draw_id as number;
+  expect((await request.post(`${API}/buildings/${a}/draw-cycles/${did}/residents`,{headers,data:{resident_id:residentId,include:true,reason:"Eligible"}})).ok()).toBeTruthy();
+  expect((await request.post(`${API}/buildings/${a}/draw-cycles/${did}/rooms`,{headers,data:{room_id:roomId,include:true,reason:"Available"}})).ok()).toBeTruthy();
+  expect((await request.post(`${API}/buildings/${a}/draw-cycles/${did}/confirm`,{headers})).ok()).toBeTruthy();
+  expect((await request.post(`${API}/buildings/${a}/draw-cycles/${did}/draw`,{headers})).ok()).toBeTruthy();
+  await page.getByRole("button",{name:"Create New Version"}).click();
+  await page.getByLabel("Rule Set Name").fill("Policy V2");
+  await page.getByRole("button",{name:"Save Draft Version"}).click();
+  await expect(page.getByText("Draft version 2 created.")).toBeVisible();
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button",{name:"Activate Version"}).click();
+  await expect(page.getByText("Criteria activated.")).toBeVisible();
+  const completed = await request.get(`${API}/buildings/${a}/draws/${did}`,{headers});
+  const historical = await completed.json();
+  expect(historical.draw.rule_snapshot_version).toBe(1);
+  expect(historical.eligibility_snapshot.rule_set.name).toBe("Policy V1");
+  expect((await(await request.get(`${API}/buildings/${a}/eligibility/rule-sets/current`,{headers})).json()).rule_set.version).toBe(2);
+  await page.getByTestId("desktop-sidebar").getByRole("button",{name:"Draw History"}).click();
+  await page.getByRole("button",{name:"View Results"}).click();
+  await expect(page.getByText("Policy V1",{exact:false})).toBeVisible();
+  await page.getByRole("button",{name:"Close draw details"}).click();
+  await page.getByLabel("Current Building:").selectOption(String(b));
+  await page.getByTestId("desktop-sidebar").getByRole("button",{name:"Eligibility Criteria"}).click();
+  await expect(page.getByRole("heading",{name:"No eligibility criteria configured"})).toBeVisible();
+  await page.getByLabel("Current Building:").selectOption(String(a));
+  await expect(page.getByRole("heading",{name:"Policy V2"})).toBeVisible();
+});

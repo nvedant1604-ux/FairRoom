@@ -8,7 +8,7 @@ SQLite is used for local persistence. Migrations in `backend/app/database.py` ar
 |---|---|
 | `buildings` | Building master. PK `id`; names, project, address, nullable map location, status and archive timestamp. |
 | `building_settings` | Per-building lottery/session state. Composite PK `(building_id, key)`; FK to building. |
-| `residents` | Building resident records. PK `id`; FK `building_id`; masked Aadhaar, SHA-256 hash, old room, priority, consent and verification. |
+| `residents` | Building resident records. PK `id`; FK `building_id`; masked Aadhaar, SHA-256 hash, old room, priority, consent and verification. Optional date of birth, residency start, policy category and annual income support configured rules. |
 | `rooms` | Building room inventory. PK `id`; FK `building_id`; room number, wing, floor, size, status and suitability. |
 | `allocations` | Current allocation projection. PK `id`; FKs to building, resident, room and draw; seed, score and explanation. |
 | `lottery_draws` | Authoritative draw-cycle record. Draw number/reference/name/phase, status, counts, seed, score, timestamps, reasons and building snapshots. |
@@ -16,6 +16,10 @@ SQLite is used for local persistence. Migrations in `backend/app/database.py` ar
 | `draw_cycle_rooms` | Eligibility record for every room considered in a cycle and room snapshots. Unique `(draw_id, room_id)`. |
 | `draw_allocations` | Immutable completed-draw allocation snapshots, including allocated and unallocated participants. Unique `(draw_id, resident_id)`. |
 | `resident_history_events` | Chronological resident events linked optionally to a draw. |
+| `eligibility_rule_sets` | Building-specific numbered Draft/Active/Inactive criteria versions with author and timestamps. Active and inactive versions are immutable through the API. |
+| `eligibility_rule_items` | Typed hard or priority conditions within a version, with operator, value, explanation, points and active state. |
+| `draw_rule_snapshots` | Exact JSON copy of the criteria and evaluation summary used at draw confirmation. One per draw. |
+| `eligibility_evaluations` | Per-resident, per-draw decision, priority score, rule results and evaluation timestamp. |
 | `audit_logs` | Action, administrator, reason, timestamp and optional building/draw/resident/room links. |
 | `settings` | Global application settings, including the current admin session token and email. |
 | `society` | Legacy society information retained for compatibility. |
@@ -28,6 +32,7 @@ SQLite is used for local persistence. Migrations in `backend/app/database.py` ar
 - Current `allocations` enforce unique resident and room references.
 - Draw numbers are unique per building and draw references are globally unique.
 - Historical tables store display snapshots rather than relying only on mutable current rows.
+- Rule-set versions are unique within each building; rule names are unique within a version. A draw stores the rule-set ID and version as well as its immutable JSON snapshot.
 
 ## Building Location Columns
 

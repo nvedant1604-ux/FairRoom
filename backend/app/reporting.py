@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import sqlite3
 from typing import Any
 
@@ -52,10 +53,36 @@ def report_payload(conn: sqlite3.Connection, building_id: int) -> dict[str, Any]
             "SELECT action, performed_by, details, reason, timestamp FROM audit_logs WHERE building_id=? ORDER BY id DESC LIMIT 20", (building_id,)
         ).fetchall()
     )
-    seed = get_setting(conn, "lottery_seed", "Not generated yet", building_id)
-    completed_at = get_setting(conn, "lottery_completed_at", building_id=building_id)
-    score = float(get_setting(conn, "fairness_score", str(fairness_score(conn, building_id)), building_id) or 0)
+    latest = conn.execute("""SELECT ld.*,drs.rules_json FROM lottery_draws ld
+        LEFT JOIN draw_rule_snapshots drs ON drs.draw_id=ld.id WHERE ld.building_id=? AND ld.status='Completed'
+        ORDER BY ld.draw_number DESC LIMIT 1""", (building_id,)).fetchone()
+    seed = latest["lottery_seed"] if latest and latest["lottery_seed"] else get_setting(conn, "lottery_seed", "Not generated yet", building_id)
+    completed_at = latest["completed_at"] if latest and latest["completed_at"] else get_setting(conn, "lottery_completed_at", building_id=building_id)
+    score = float(latest["fairness_score"] if latest and latest["fairness_score"] is not None else
+                  get_setting(conn, "fairness_score", str(fairness_score(conn, building_id)), building_id) or 0)
     allocations = allocation_rows(conn, building_id)
+    snapshot = json.loads(latest["rules_json"]) if latest and latest["rules_json"] else None
+    if snapshot:
+        rule_set = snapshot["rule_set"]
+        reasons: dict[str, int] = {}
+        for row in conn.execute("SELECT results_json FROM eligibility_evaluations WHERE draw_id=? AND building_id=?", (latest["id"], building_id)):
+            result = json.loads(row["results_json"])
+            for item in result["results"]:
+                if item["category"] == "HARD_ELIGIBILITY" and not item["passed"]:
+                    reasons[item["rule_name"]] = reasons.get(item["rule_name"], 0) + 1
+        eligibility = {"rule_set_name": rule_set["name"] if rule_set else None,
+                       "rule_version": rule_set["version"] if rule_set else None,
+                       "rules": [{"name": rule["rule_name"], "category": rule["category"], "field": rule["field_name"],
+                                  "operator": rule["operator"], "value": rule["comparison_value"],
+                                  "points": rule["priority_points"]} for rule in (rule_set or {}).get("rules", []) if rule["is_active"]],
+                       "eligible_count": snapshot["summary"]["total_eligible"],
+                       "ineligible_count": snapshot["summary"]["total_ineligible"],
+                       "ineligibility_reasons": reasons,
+                       "methodology": "Priority points are explanatory only; the existing seeded lottery selects winners."}
+    else:
+        eligibility = {"rule_set_name": None, "rule_version": None, "rules": [], "eligible_count": None,
+                       "ineligible_count": None, "ineligibility_reasons": {},
+                       "methodology": "No historical eligibility snapshot is available for this building."}
     return {
         "society": society,
         "building": building,
@@ -77,6 +104,10 @@ def report_payload(conn: sqlite3.Connection, building_id: int) -> dict[str, Any]
         ],
         "lottery_seed": seed,
         "lottery_completed_at": completed_at,
+        "lottery_mode": latest["lottery_mode"] if latest else None,
+        "draw_outcomes": {"winners": latest["total_allocated"], "not_selected": latest["total_not_selected"],
+                          "waiting_list": latest["total_waiting_list"]} if latest else None,
+        "eligibility": eligibility,
         "allocations": allocations,
         "ai_explanation_summary": (
             "The AI fairness module validates eligibility, checks duplicates and suspicious entries, "

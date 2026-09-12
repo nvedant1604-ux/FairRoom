@@ -13,6 +13,7 @@ This BSc IT final-year project supports fair and transparent room allocation thr
 - Resident verification, rejection, consent and history
 - Controlled Preparing/Ready/In Progress/Completed draw cycles
 - Resident and room eligibility selection
+- Building-specific, versioned, transparent rule-based eligibility with hard rules, priority scores and resident previews
 - Stored-seed deterministic priority/suitability allocation
 - Full Allocation and Competitive Lottery modes, with optional deterministic waiting lists
 - Multiple independent draw phases with immutable snapshots
@@ -20,7 +21,8 @@ This BSc IT final-year project supports fair and transparent room allocation thr
 - Draw history, audit logs, CSV/PDF reports and certificates
 - Public building list and resident allocation search
 - Lazy-loaded standard 2D Google Maps building location, marker, address lookup and external map links
-- Isolated Playwright E2E suite: 16 passed, with Google-free deterministic map test mode
+- Isolated Playwright E2E suite: 21 passed, with Google-free deterministic map test mode
+- Historical draw snapshots retain the exact criteria version and per-resident evaluation used before lottery selection
 
 ## Technology Stack
 
@@ -32,7 +34,7 @@ This BSc IT final-year project supports fair and transparent room allocation thr
 ## Folder Structure
 
 ```text
-AI Lottery System/
+FairRoom/
 ├── backend/
 │   ├── app/                 FastAPI, database, fairness and reporting modules
 │   ├── backups/             timestamped production database backups
@@ -49,7 +51,7 @@ AI Lottery System/
 ## Installation
 
 ```powershell
-cd "C:\Users\vedant\OneDrive\Desktop\Projects\AI Lottery System"
+cd "C:\Users\vedant\OneDrive\Desktop\Projects\FairRoom"
 python -m pip install -r backend\requirements.txt
 
 cd frontend
@@ -59,7 +61,7 @@ npm.cmd install
 ## Run Backend
 
 ```powershell
-cd "C:\Users\vedant\OneDrive\Desktop\Projects\AI Lottery System"
+cd "C:\Users\vedant\OneDrive\Desktop\Projects\FairRoom"
 python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
@@ -68,7 +70,7 @@ API health: `http://127.0.0.1:8000/api/health`
 ## Run Frontend
 
 ```powershell
-cd "C:\Users\vedant\OneDrive\Desktop\Projects\AI Lottery System\frontend"
+cd "C:\Users\vedant\OneDrive\Desktop\Projects\FairRoom\frontend"
 npm.cmd run dev
 ```
 
@@ -116,10 +118,17 @@ Override with `AI_LOTTERY_ADMIN_EMAIL` and `AI_LOTTERY_ADMIN_PASSWORD`. These de
 6. Review immutable results, history, reports and certificate.
 7. Create a later cycle without changing earlier completed draws.
 
+### Eligibility Criteria
+
+An authenticated administrator can open **Eligibility Criteria**, create a draft rule-set version for the selected building, add hard or priority rules, preview one resident or evaluate all residents, and activate the version. Hard-rule failures remove residents from the eligible pool. Priority-rule matches add an explainable score but do not select winners or change the existing seeded lottery order. Only resident fields that FairRoom stores can be used. No criteria configured means the existing verified-with-consent behavior applies.
+
+An activated version is immutable. To change a policy, create a new draft version, optionally copying existing rules, then activate it. Draw confirmation stores the exact version, rules and resident evaluations. Draw History, Resident History and the Transparency Report read these historical records even after a later version is activated. This is a transparent rule-based engine, not a machine-learning decision model.
+
 ## Validation and Tests
 
 ```powershell
 python -m compileall backend\app
+python -m unittest discover -s backend\tests -v
 
 cd frontend
 npm.cmd run build

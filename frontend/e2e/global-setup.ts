@@ -16,6 +16,9 @@ function urlIsReady(url: string): Promise<boolean> {
 }
 
 export default async function globalSetup() {
+  if (await urlIsReady("http://127.0.0.1:8010/api/health") || await urlIsReady("http://127.0.0.1:5174")) {
+    throw new Error("E2E ports 8010 or 5174 are already in use. Stop the previous test servers before starting a new isolated run.");
+  }
   const resultsDir = path.resolve("test-results");
   const database = path.join(resultsDir, "ai-lottery-e2e.sqlite");
   const pidFile = path.join(resultsDir, "servers.json");

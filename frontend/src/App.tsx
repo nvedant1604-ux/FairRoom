@@ -16,6 +16,7 @@ import { TransparencyReport } from "./pages/TransparencyReport";
 import { ResidentHistory } from "./pages/ResidentHistory";
 import { DrawHistory } from "./pages/DrawHistory";
 import { DrawCycleSetup } from "./pages/DrawCycleSetup";
+import { EligibilityCriteria } from "./pages/EligibilityCriteria";
 import type { Allocation, AuditLog, DashboardStats, DemoResetResponse, LotteryDraw as LotteryDrawRecord, Resident, Room, TransparencyReport as Report } from "./types";
 import { useBuilding } from "./context/BuildingContext";
 
@@ -23,10 +24,10 @@ type SessionStatus = "checking" | "authenticated" | "anonymous";
 
 const pagePaths: Record<PageKey, string> = {
   dashboard: "/", residents: "/residents", rooms: "/rooms", lottery: "/lottery",
-  results: "/results", audit: "/audit", report: "/report", residentSearch: "/resident-search", residentHistory: "/resident-history", drawHistory: "/draw-history", drawCycleSetup: "/draw-cycle-setup", admin: "/admin-login"
+  results: "/results", audit: "/audit", report: "/report", residentSearch: "/resident-search", residentHistory: "/resident-history", drawHistory: "/draw-history", drawCycleSetup: "/draw-cycle-setup", eligibility: "/eligibility", admin: "/admin-login"
 };
 const pathPages = Object.fromEntries(Object.entries(pagePaths).map(([key, path]) => [path, key])) as Record<string, PageKey>;
-const protectedPages = new Set<PageKey>(["residents", "rooms", "lottery", "results", "audit", "report", "residentHistory", "drawHistory", "drawCycleSetup"]);
+const protectedPages = new Set<PageKey>(["residents", "rooms", "lottery", "results", "audit", "report", "residentHistory", "drawHistory", "drawCycleSetup", "eligibility"]);
 
 function pageFromLocation(): PageKey {
   return pathPages[window.location.pathname.replace(/\/$/, "") || "/"] ?? "dashboard";
@@ -112,14 +113,14 @@ export default function App() {
     let cancelled = false;
     if (!getAdminToken()) { setSessionStatus("anonymous"); return; }
     setSessionStatus("checking");
+    const requestedPage = pageFromLocation();
     apiRequest<{ email: string }>("/admin/session")
       .then((data) => { if (!cancelled) { setAdminEmailState(data.email); setSessionStatus("authenticated"); } })
       .catch(() => {
         if (!cancelled) {
-          const currentPage = pageFromLocation();
-          if (protectedPages.has(currentPage)) {
+          if (protectedPages.has(requestedPage)) {
             setLoginNotice("Your admin session has expired. Please log in again.");
-            navigate("admin", true, { returnTo: pagePaths[currentPage] });
+            navigate("admin", true, { returnTo: pagePaths[requestedPage] });
           }
           setSessionStatus("anonymous");
         }
@@ -144,7 +145,7 @@ export default function App() {
   useEffect(() => {
     if (pageFromLocation() !== activePage) return;
     if (!protectedPages.has(activePage) || sessionStatus === "checking" || sessionStatus === "authenticated") return;
-    setLoginNotice("Admin login is required to access this page.");
+    setLoginNotice(current => current ?? "Admin login is required to access this page.");
     navigate("admin", true, { returnTo: pagePaths[activePage] });
   }, [activePage, navigate, sessionStatus]);
 
@@ -155,8 +156,9 @@ export default function App() {
   }
 
   async function logout() {
-    try { await apiRequest<void>("/admin/logout", { method: "POST" }); } catch { /* local logout always succeeds */ }
+    const logoutRequest = apiRequest<void>("/admin/logout", { method: "POST" });
     clearAdminToken(); setSessionStatus("anonymous"); setAdminEmailState(null); setLoginNotice(null); navigate("admin");
+    try { await logoutRequest; } catch { /* local logout always succeeds */ }
   }
 
   async function resetDemoData() {
@@ -179,6 +181,7 @@ export default function App() {
       case "residentHistory": return protectedContent(<ResidentHistory buildingId={selectedBuildingId!} buildingName={selectedBuilding?.building_name??""}/>);
       case "drawHistory": return protectedContent(<DrawHistory buildingId={selectedBuildingId!} buildingName={selectedBuilding?.building_name??""}/>);
       case "drawCycleSetup": return protectedContent(<DrawCycleSetup buildingId={selectedBuildingId!} buildingName={selectedBuilding?.building_name??""}/>);
+      case "eligibility": return protectedContent(<EligibilityCriteria key={selectedBuildingId} buildingId={selectedBuildingId!} buildingName={selectedBuilding?.building_name??""} residents={residents} />);
       case "admin": return <AdminLogin isAdmin={isAdmin} onLogin={login} onLogout={logout} notice={loginNotice} />;
     }
   })();

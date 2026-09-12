@@ -10,4 +10,5 @@ export type PageKey =
   | "residentHistory"
   | "drawHistory"
   | "drawCycleSetup"
+  | "eligibility"
   | "admin";

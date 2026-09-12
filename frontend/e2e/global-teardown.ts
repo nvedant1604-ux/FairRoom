@@ -7,7 +7,8 @@ export default async function globalTeardown() {
   try {
     const pids = JSON.parse(await fs.readFile(pidFile, "utf8")) as number[];
     for (const pid of pids) {
-      if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore", timeout: 5_000 });
+      if (!Number.isInteger(pid) || pid <= 0) continue;
+      if (process.platform === "win32") spawnSync("powershell.exe", ["-NoProfile", "-Command", `Stop-Process -Id ${pid} -Force -ErrorAction SilentlyContinue`], { stdio: "ignore", timeout: 5_000, windowsHide: true });
       else process.kill(-pid, "SIGTERM");
     }
   } catch { /* backend may already have stopped */ }

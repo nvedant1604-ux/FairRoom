@@ -5,6 +5,8 @@
 - Server-validated Bearer-token authentication
 - Session restoration validation and backend logout invalidation
 - Protected administrative frontend routes and endpoints
+- Admin-only criteria management and preview endpoints; rule IDs are checked against the selected building on the server
+- Frozen activated rule versions and per-draw snapshots prevent later policy changes from rewriting completed decisions
 - Full Aadhaar/ID not stored; masked value plus SHA-256 hash
 - Global ID duplicate protection
 - Building-scoped resource ownership checks
@@ -25,6 +27,8 @@ The local token is stored in browser local storage and a single configured admin
 - Explanations must remain understandable and challengeable.
 - Hidden manual preference must not be introduced.
 - Sensitive data collection and display should be minimized.
+- Optional annual income and dates are used only when an administrator configures a legitimate policy. The public resident list and transparency report do not expose individual income or date values.
+- The eligibility engine is deterministic and rule-based, not an opaque machine-learning model. Priority points are disclosed and do not choose lottery winners.
 - The system must not replace legal review or final society approval.
 - Rules and score penalties should be reviewed for indirect bias.
 - Residents should receive appropriate access to reports and correction procedures.

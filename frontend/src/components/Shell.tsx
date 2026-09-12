@@ -27,6 +27,7 @@ const pageTitles: Record<PageKey, string> = {
   residentHistory: "Resident History",
   drawHistory: "Draw History",
   drawCycleSetup: "Draw Cycle Setup",
+  eligibility: "Eligibility Criteria",
   admin: "Admin Login"
 };
 

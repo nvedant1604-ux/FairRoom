@@ -388,10 +388,10 @@ def migrate_history() -> None:
 def migrate_eligibility_rules() -> None:
     """Add building-scoped eligibility configuration and immutable draw snapshots safely."""
     with get_connection() as conn:
-        for name, definition in {"date_of_birth": "TEXT", "residency_start_date": "TEXT", "resident_category": "TEXT"}.items():
+        for name, definition in {"date_of_birth": "TEXT", "residency_start_date": "TEXT", "resident_category": "TEXT", "annual_income": "REAL"}.items():
             if name not in _columns(conn, "residents"):
                 conn.execute(f"ALTER TABLE residents ADD COLUMN {name} {definition}")
-        for name, definition in {"total_not_eligible": "INTEGER NOT NULL DEFAULT 0", "rule_snapshot_version": "INTEGER NOT NULL DEFAULT 1"}.items():
+        for name, definition in {"total_not_eligible": "INTEGER NOT NULL DEFAULT 0", "rule_snapshot_version": "INTEGER", "eligibility_rule_set_id": "INTEGER"}.items():
             if name not in _columns(conn, "lottery_draws"):
                 conn.execute(f"ALTER TABLE lottery_draws ADD COLUMN {name} {definition}")
         conn.executescript(
@@ -418,6 +418,22 @@ def migrate_eligibility_rules() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_rules_building ON eligibility_rules(building_id, is_active, priority);
             CREATE INDEX IF NOT EXISTS idx_evaluations_draw ON eligibility_evaluations(draw_id, building_id, resident_id);
+            CREATE TABLE IF NOT EXISTS eligibility_rule_sets (
+              id INTEGER PRIMARY KEY AUTOINCREMENT, building_id INTEGER NOT NULL REFERENCES buildings(id),
+              version INTEGER NOT NULL, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+              status TEXT NOT NULL CHECK(status IN ('Draft','Active','Inactive')),
+              created_by TEXT NOT NULL, updated_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+              UNIQUE(building_id, version)
+            );
+            CREATE TABLE IF NOT EXISTS eligibility_rule_items (
+              id INTEGER PRIMARY KEY AUTOINCREMENT, rule_set_id INTEGER NOT NULL REFERENCES eligibility_rule_sets(id),
+              rule_name TEXT NOT NULL, category TEXT NOT NULL CHECK(category IN ('HARD_ELIGIBILITY','PRIORITY')),
+              field_name TEXT NOT NULL, operator TEXT NOT NULL, comparison_value TEXT,
+              priority_points INTEGER NOT NULL DEFAULT 0, is_active INTEGER NOT NULL DEFAULT 1,
+              explanation TEXT NOT NULL DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 100,
+              created_at TEXT NOT NULL, UNIQUE(rule_set_id, rule_name)
+            );
+            CREATE INDEX IF NOT EXISTS idx_rule_sets_building ON eligibility_rule_sets(building_id, status, version);
             """
         )
 

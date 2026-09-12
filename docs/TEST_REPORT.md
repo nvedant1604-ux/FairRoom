@@ -3,18 +3,21 @@
 ## Strategy
 
 - `python -m compileall backend\app` validates Python compilation.
+- `python -m unittest discover -s backend\tests -v` covers typed rules, versioning, isolation, fallback, draw outcomes and migration safety.
 - `npm.cmd run build` performs strict TypeScript checking and a Vite production build.
 - Playwright combines browser interaction with API assertions.
 - The suite runs one Chromium worker to avoid shared-state collisions.
 - Global setup launches backend port **8010** and frontend port **5174**.
 - `AI_LOTTERY_DB` points to `frontend/test-results/ai-lottery-e2e.sqlite`.
 - Setup removes only that temporary database and its WAL files.
-- Windows teardown uses `taskkill /T /F` on recorded test PIDs.
+- Windows teardown uses PowerShell `Stop-Process` on recorded test PIDs. Setup refuses occupied E2E ports before clearing the temporary database.
 - CORS explicitly permits local ports 5173 and 5174.
 
 ## Current Result
 
-**8 passed, 0 failed.** Production `backend/lottery.db` is not used by Playwright.
+**21 Playwright tests passed, 0 failed; five backend tests passed, 0 failed.** Production `backend/lottery.db` is not used by either suite.
+
+An additional read-only backup of the existing project database was migrated twice in a temporary directory. All 8 buildings, 22 residents, 36 rooms, 14 allocations, 7 draws, 144 resident-history events and 142 audit entries remained present.
 
 ## Test Cases
 
@@ -33,12 +36,17 @@
 | T11 | Permanent history | Snapshots survived rename/reset; cross-building history returned 404. | Pass |
 | T12 | Multiple cycles | Draw 1/2 had distinct seeds and snapshots; old room reuse failed. | Pass |
 | T13 | Cancellation/state rules | Preparing cycle remained Cancelled with no draw; invalid draw returned 409. | Pass |
-| T14 | Restart persistence | Backend was restarted against the same temporary DB; three cycles remained. | Pass |
+| T14 | Process persistence | A second backend process opened the same temporary DB; three cycles remained. | Pass |
+| T15 | Eligibility criteria UI and API | Admin creates and activates versions, previews residents and checks authentication and validation. | Pass |
+| T16 | Eligibility snapshot immutability | Draw 1 retains version 1 after version 2 becomes active. | Pass |
+| T17 | Typed hard and priority rules | Numeric and date boundaries, null handling, inactive rules and scores are checked in backend tests. | Pass |
+| T18 | Eligibility integration | Full Allocation and Competitive Waiting List retain expected outcomes after filtering. | Pass |
 
 ## Commands
 
 ```powershell
 python -m compileall backend\app
+python -m unittest discover -s backend\tests -v
 cd frontend
 npm.cmd run build
 npm.cmd run test:e2e
