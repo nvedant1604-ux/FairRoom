@@ -37,6 +37,7 @@ interface ResidentForm {
   residency_start_date: string;
   resident_category: string;
   annual_income: string;
+  portal_password: string;
 }
 
 const initialForm: ResidentForm = {
@@ -52,7 +53,8 @@ const initialForm: ResidentForm = {
   date_of_birth: "",
   residency_start_date: "",
   resident_category: "",
-  annual_income: ""
+  annual_income: "",
+  portal_password: ""
 };
 
 export function ResidentRegistration({ buildingId, buildingName, residents, isAdmin, onRefresh }: ResidentRegistrationProps) {
@@ -61,6 +63,8 @@ export function ResidentRegistration({ buildingId, buildingName, residents, isAd
   const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [portalResidentId, setPortalResidentId] = useState<number | null>(null);
+  const [portalPassword, setPortalPassword] = useState("");
 
   async function submitResident(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,9 +79,10 @@ export function ResidentRegistration({ buildingId, buildingName, residents, isAd
         body: JSON.stringify({ ...form, date_of_birth: form.date_of_birth || null,
           residency_start_date: form.residency_start_date || null,
           resident_category: form.resident_category || null,
-          annual_income: form.annual_income === "" ? null : Number(form.annual_income) })
+          annual_income: form.annual_income === "" ? null : Number(form.annual_income),
+          portal_password: form.portal_password || null })
       });
-      setMessage(`${response.resident.full_name} saved with masked Aadhaar ${response.resident.aadhaar_masked}.`);
+      setMessage(`${response.resident.full_name} saved. Resident login ID: ${response.resident.id}.${form.portal_password ? " Portal password is ready." : " Set a portal password when ready."}`);
       setWarnings(response.warnings);
       setForm(initialForm);
       await onRefresh();
@@ -96,6 +101,17 @@ export function ResidentRegistration({ buildingId, buildingName, residents, isAd
     } catch (err) {
       setError(err instanceof Error ? err.message : "Resident status could not be updated.");
     }
+  }
+
+  async function savePortalPassword(residentId: number) {
+    setError(null);
+    try {
+      await apiRequest(`/buildings/${buildingId}/residents/${residentId}/portal-password`, {
+        method: "PUT", body: JSON.stringify({ password: portalPassword })
+      });
+      setPortalResidentId(null); setPortalPassword("");
+      setMessage(`Portal password updated for resident ID ${residentId}. Share it privately with the resident.`);
+    } catch (err) { setError(err instanceof Error ? err.message : "Portal password could not be updated."); }
   }
 
   function statusTone(status: string) {
@@ -200,6 +216,13 @@ export function ResidentRegistration({ buildingId, buildingName, residents, isAd
                 required
               />
             </div>
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-slate-700" htmlFor="portal_password">Resident portal password (optional)</label>
+            <input className="focus-ring mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              id="portal_password" type="password" minLength={12} autoComplete="new-password"
+              value={form.portal_password} onChange={event => setForm({...form, portal_password:event.target.value})} />
+            <p className="mt-1 text-xs text-slate-500">At least 12 characters. Give the resident their ID and password privately.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -316,6 +339,16 @@ export function ResidentRegistration({ buildingId, buildingName, residents, isAd
                       />
                     </td>
                     <td className="px-3 py-3">
+                      <p className="mb-2 text-xs font-semibold text-slate-500">Login ID: {resident.id}</p>
+                      <button className="focus-ring mb-2 rounded-md border border-sage px-2 py-1 text-xs font-semibold text-forest"
+                        type="button" onClick={() => { setPortalResidentId(resident.id); setPortalPassword(""); }}>Set portal password</button>
+                      {portalResidentId === resident.id ? <div className="mb-2 flex min-w-40 flex-col gap-2">
+                        <input aria-label={`Portal password for ${resident.full_name}`} className="rounded-lg border px-2 py-1"
+                          type="password" minLength={12} autoComplete="new-password" value={portalPassword}
+                          onChange={event => setPortalPassword(event.target.value)} />
+                        <button className="rounded-lg bg-earth px-2 py-1 text-xs font-semibold text-white disabled:opacity-50"
+                          disabled={portalPassword.length < 12} onClick={() => void savePortalPassword(resident.id)} type="button">Save password</button>
+                      </div> : null}
                       {resident.verification_status === "Verified" ? (
                         <span className="text-xs font-semibold text-slate-500">Ready</span>
                       ) : resident.verification_status === "Rejected" ? (

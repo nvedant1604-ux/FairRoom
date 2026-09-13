@@ -55,6 +55,13 @@ export function getAdminToken(): string | null {
   return window.localStorage.getItem("ai_lottery_admin_token");
 }
 
+export const getResidentToken = () => window.localStorage.getItem("fairroom_resident_token");
+export const setResidentToken = (token: string) => window.localStorage.setItem("fairroom_resident_token", token);
+export const clearResidentToken = () => window.localStorage.removeItem("fairroom_resident_token");
+
+const isPrivateResidentPath = (path: string) => path.startsWith("/resident/") &&
+  !path.startsWith("/resident/search") && !path.startsWith("/resident/certificate");
+
 export function setAdminToken(token: string): void {
   window.localStorage.setItem("ai_lottery_admin_token", token);
 }
@@ -73,7 +80,7 @@ export async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  const token = getAdminToken();
+  const token = isPrivateResidentPath(path) ? getResidentToken() : getAdminToken();
 
   if (!headers.has("Content-Type") && options.body) {
     headers.set("Content-Type", "application/json");
@@ -95,10 +102,16 @@ export async function apiRequest<T>(
     } catch {
       message = response.statusText || message;
     }
-    if (response.status === 401 && path !== "/admin/login" && path !== "/admin/logout") {
-      clearAdminToken();
-      window.dispatchEvent(new CustomEvent("admin-session-expired"));
-      message = "Your admin session has expired. Please log in again.";
+    if (response.status === 401 && path !== "/admin/login" && path !== "/resident/login") {
+      if (isPrivateResidentPath(path)) {
+        clearResidentToken();
+        window.dispatchEvent(new CustomEvent("resident-session-expired"));
+        message = "Your resident session has expired. Please log in again.";
+      } else {
+        clearAdminToken();
+        window.dispatchEvent(new CustomEvent("admin-session-expired"));
+        message = "Your admin session has expired. Please log in again.";
+      }
     }
     throw new ApiError(message, response.status);
   }

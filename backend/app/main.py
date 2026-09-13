@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .database import (
     PRIORITY_CATEGORIES,
@@ -30,8 +31,9 @@ from .database import (
     HISTORY_RULES,
     _snapshot_allocations,
 )
-from .auth import require_admin
+from .auth import hash_password, require_admin, resolve_role
 from .eligibility_api import router as eligibility_router
+from .resident_api import router as resident_router
 from .fairness import detect_data_issues, fairness_score, fairness_status, run_lottery, run_lottery_cycle
 from .reporting import allocation_rows, allocations_csv, report_payload, simple_pdf
 from .schemas import AdminLogin, BuildingCreate, BuildingUpdate, ChatRequest, ResidentCreate, RoomCreate, DrawCycleCreate, CycleResidentChange, CycleRoomChange, CycleCancel
@@ -43,19 +45,38 @@ app = FastAPI(
     version="1.0.0",
 )
 
+app.include_router(eligibility_router)
+app.include_router(resident_router)
+
+
+@app.middleware("http")
+async def enforce_api_roles(request: Any, call_next: Any) -> Any:
+    """Protect legacy read routes as well as explicitly guarded write routes."""
+    path = request.url.path
+    public = {"/api/health", "/api/public/buildings", "/api/admin/login", "/api/resident/login"}
+    if request.method == "OPTIONS" or not path.startswith("/api/") or path in public:
+        return await call_next(request)
+    try:
+        role, _ = resolve_role(request.headers.get("authorization"))
+    except HTTPException as exc:
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    expected = "resident" if path.startswith("/api/resident/") and path not in {
+        "/api/resident/search", "/api/resident/certificate"} else "admin"
+    if role != expected:
+        return JSONResponse(status_code=403, content={"detail": f"{expected.title()} access required."})
+    return await call_next(request)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://127.0.0.1:5173",
-        "http://localhost:5173",
-        "http://127.0.0.1:5174",
-        "http://localhost:5174",
+        "http://127.0.0.1:5173", "http://localhost:5173",
+        "http://127.0.0.1:5174", "http://localhost:5174",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(eligibility_router)
 
 
 @app.on_event("startup")
@@ -129,12 +150,12 @@ def admin_login(payload: AdminLogin) -> dict[str, str]:
         set_setting(conn, "admin_token", token)
         set_setting(conn, "admin_email", payload.email)
         add_audit(conn, "Admin login", payload.email, "Admin logged in successfully.")
-    return {"token": token, "admin_name": "Society Admin", "email": payload.email}
+    return {"token": token, "admin_name": "Society Admin", "email": payload.email, "role": "admin"}
 
 
 @app.get("/api/admin/session")
 def admin_session(admin: str = Depends(require_admin)) -> dict[str, str]:
-    return {"email": admin}
+    return {"email": admin, "role": "admin"}
 
 
 @app.post("/api/admin/logout", status_code=204)
@@ -355,6 +376,9 @@ def create_resident(payload: ResidentCreate, building_id: int | None = None, adm
                 payload.resident_category, payload.annual_income,
             ),
         )
+        if payload.portal_password:
+            conn.execute("INSERT INTO resident_credentials(resident_id,password_hash,updated_at) VALUES(?,?,?)",
+                         (cursor.lastrowid, hash_password(payload.portal_password), utc_now()))
         add_audit(
             conn,
             "Resident added",

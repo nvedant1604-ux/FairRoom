@@ -6,7 +6,7 @@ async function admin(request:APIRequestContext){const response=await request.pos
 const resident=(name:string,aadhaar:string,room:string)=>({full_name:name,aadhaar_number:aadhaar,old_room_number:room,family_members:3,contact_number:"9234567890",priority_category:"General",building_wing:"A",document_name:null,consent:true});
 const room=(number:string)=>({room_number:number,wing:"A",floor:1,size:"650 sq ft",status:"Available",suitable_for:"General"});
 
-test("independent buildings never mix residents, rooms, locks, reports or public search", async ({page,request})=>{
+test("independent buildings never mix residents, rooms, locks, reports or admin search", async ({page,request})=>{
   const headers=await admin(request);
   const addA=await request.post(`${API}/buildings`,{headers,data:building("E2E Building A","400001")}); expect(addA.ok()).toBeTruthy(); const a=(await addA.json()).building;
   const addB=await request.post(`${API}/buildings`,{headers,data:building("E2E Building B","400002")}); expect(addB.ok()).toBeTruthy(); const b=(await addB.json()).building;
@@ -23,20 +23,20 @@ test("independent buildings never mix residents, rooms, locks, reports or public
 
   const duplicateRoom=await request.post(`${API}/buildings/${b.id}/rooms`,{headers,data:room("SHARED-101")}); expect(duplicateRoom.status()).toBe(409);
   const duplicateAadhaar=await request.post(`${API}/buildings/${b.id}/residents`,{headers,data:resident("Duplicate Aadhaar","855500000001","B-OTHER")}); expect(duplicateAadhaar.status()).toBe(409);
-  expect((await request.get(`${API}/buildings/${b.id}/residents`)).json()).resolves.not.toContainEqual(expect.objectContaining({full_name:"Building A Resident"}));
-  expect((await request.get(`${API}/buildings/${b.id}/rooms`)).json()).resolves.toHaveLength(1);
+  expect((await request.get(`${API}/buildings/${b.id}/residents`,{headers})).json()).resolves.not.toContainEqual(expect.objectContaining({full_name:"Building A Resident"}));
+  expect((await request.get(`${API}/buildings/${b.id}/rooms`,{headers})).json()).resolves.toHaveLength(1);
 
   expect((await request.post(`${API}/buildings/${a.id}/residents/${residentA.id}/verify`,{headers})).ok()).toBeTruthy();
   expect((await request.post(`${API}/buildings/${a.id}/lottery/draw`,{headers})).ok()).toBeTruthy();
-  const statsA=await (await request.get(`${API}/buildings/${a.id}/dashboard`)).json(); const statsB=await (await request.get(`${API}/buildings/${b.id}/dashboard`)).json();
+  const statsA=await (await request.get(`${API}/buildings/${a.id}/dashboard`,{headers})).json(); const statsB=await (await request.get(`${API}/buildings/${b.id}/dashboard`,{headers})).json();
   expect(statsA.lottery_locked).toBe(true); expect(statsB.lottery_locked).toBe(false);
   expect((await request.post(`${API}/buildings/${b.id}/residents`,{headers,data:resident("Building B Second","855500000003","B-SECOND")})).ok()).toBeTruthy();
 
-  const reportA=await (await request.get(`${API}/buildings/${a.id}/report`)).json(); const reportB=await (await request.get(`${API}/buildings/${b.id}/report`)).json();
+  const reportA=await (await request.get(`${API}/buildings/${a.id}/report`,{headers})).json(); const reportB=await (await request.get(`${API}/buildings/${b.id}/report`,{headers})).json();
   expect(reportA.allocations).toHaveLength(1); expect(reportA.allocations[0].full_name).toBe("Building A Resident"); expect(reportB.allocations).toHaveLength(0);
-  const csvA=await (await request.get(`${API}/buildings/${a.id}/report.csv`)).text(); expect(csvA).toContain("Building A Resident"); expect(csvA).not.toContain("Building B Resident");
+  const csvA=await (await request.get(`${API}/buildings/${a.id}/report.csv`,{headers})).text(); expect(csvA).toContain("Building A Resident"); expect(csvA).not.toContain("Building B Resident");
 
-  expect((await request.get(`${API}/resident/search`,{params:{building_id:a.id,query:"SHARED-OLD-101"}})).ok()).toBeTruthy();
-  const wrongSearch=await request.get(`${API}/resident/search`,{params:{building_id:b.id,query:"SHARED-OLD-101"}}); expect((await wrongSearch.json()).full_name).toBe("Building B Resident");
-  expect((await request.get(`${API}/buildings/999999/dashboard`)).status()).toBe(404);
+  expect((await request.get(`${API}/resident/search`,{headers,params:{building_id:a.id,query:"SHARED-OLD-101"}})).ok()).toBeTruthy();
+  const wrongSearch=await request.get(`${API}/resident/search`,{headers,params:{building_id:b.id,query:"SHARED-OLD-101"}}); expect((await wrongSearch.json()).full_name).toBe("Building B Resident");
+  expect((await request.get(`${API}/buildings/999999/dashboard`,{headers})).status()).toBe(404);
 });

@@ -1,193 +1,121 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { LockKeyhole, Home, Sparkles } from "lucide-react";
 
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import { Shell } from "./components/Shell";
-import { apiRequest, clearAdminToken, getAdminEmail, getAdminToken, setAdminToken as storeAdminToken } from "./lib/api";
-import { AdminLogin } from "./pages/AdminLogin";
-import { AllocationResults } from "./pages/AllocationResults";
-import { AuditLogs } from "./pages/AuditLogs";
-import { Dashboard } from "./pages/Dashboard";
-import { LotteryDraw } from "./pages/LotteryDraw";
-import type { PageKey } from "./pages/pageTypes";
-import { ResidentRegistration } from "./pages/ResidentRegistration";
-import { ResidentSearch } from "./pages/ResidentSearch";
-import { RoomManagement } from "./pages/RoomManagement";
-import { TransparencyReport } from "./pages/TransparencyReport";
-import { ResidentHistory } from "./pages/ResidentHistory";
-import { DrawHistory } from "./pages/DrawHistory";
-import { DrawCycleSetup } from "./pages/DrawCycleSetup";
-import { EligibilityCriteria } from "./pages/EligibilityCriteria";
-import type { Allocation, AuditLog, DashboardStats, DemoResetResponse, LotteryDraw as LotteryDrawRecord, Resident, Room, TransparencyReport as Report } from "./types";
-import { useBuilding } from "./context/BuildingContext";
+import AdminApp from "./AdminApp";
+import { ResidentPortal } from "./ResidentPortal";
+import { apiRequest, clearAdminToken, clearResidentToken, getAdminToken, getResidentToken, setResidentToken } from "./lib/api";
 
-type SessionStatus = "checking" | "authenticated" | "anonymous";
-
-const pagePaths: Record<PageKey, string> = {
-  dashboard: "/", residents: "/residents", rooms: "/rooms", lottery: "/lottery",
-  results: "/results", audit: "/audit", report: "/report", residentSearch: "/resident-search", residentHistory: "/resident-history", drawHistory: "/draw-history", drawCycleSetup: "/draw-cycle-setup", eligibility: "/eligibility", admin: "/admin-login"
-};
-const pathPages = Object.fromEntries(Object.entries(pagePaths).map(([key, path]) => [path, key])) as Record<string, PageKey>;
-const protectedPages = new Set<PageKey>(["residents", "rooms", "lottery", "results", "audit", "report", "residentHistory", "drawHistory", "drawCycleSetup", "eligibility"]);
-
-function pageFromLocation(): PageKey {
-  return pathPages[window.location.pathname.replace(/\/$/, "") || "/"] ?? "dashboard";
-}
-
-function safeReturnPage(value: unknown): PageKey {
-  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//")
-    ? pathPages[value] ?? "dashboard"
-    : "dashboard";
-}
+type Role = "admin" | "resident" | null;
 
 export default function App() {
-  const { selectedBuilding, selectedBuildingId, refreshBuildings, loading: buildingsLoading } = useBuilding();
-  const [activePage, setActivePage] = useState<PageKey>(pageFromLocation);
-  const [sessionStatus, setSessionStatus] = useState<SessionStatus>(() => getAdminToken() ? "checking" : "anonymous");
-  const [adminEmail, setAdminEmailState] = useState<string | null>(() => getAdminEmail());
-  const [loginNotice, setLoginNotice] = useState<string | null>(null);
-  const [dashboard, setDashboard] = useState<DashboardStats | null>(null);
-  const [residents, setResidents] = useState<Resident[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [allocations, setAllocations] = useState<Allocation[]>([]);
-  const [audits, setAudits] = useState<AuditLog[]>([]);
-  const [report, setReport] = useState<Report | null>(null);
-  const [activeDrawCycleId, setActiveDrawCycleId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [globalError, setGlobalError] = useState<string | null>(null);
-  const refreshSequence = useRef(0);
+  const [path, setPath] = useState(window.location.pathname);
+  const [role, setRole] = useState<Role | "checking">("checking");
+  const [residentName, setResidentName] = useState("");
+  const [residentId, setResidentId] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const refreshAll = useCallback(async () => {
-    const requestSequence = ++refreshSequence.current;
-    if (!selectedBuildingId) {
-      if (requestSequence === refreshSequence.current) {
-        setDashboard(null); setResidents([]); setRooms([]); setAllocations([]); setAudits([]); setReport(null); setActiveDrawCycleId(null); setLoading(false);
-      }
-      return;
-    }
-    setLoading(true); setGlobalError(null);
-    setDashboard(null); setResidents([]); setRooms([]); setAllocations([]); setAudits([]); setReport(null); setActiveDrawCycleId(null);
-    try {
-      const base = `/buildings/${selectedBuildingId}`;
-      const [dashboardData, residentData, roomData, allocationData, auditData, reportData, drawData] = await Promise.all([
-        apiRequest<DashboardStats>(`${base}/dashboard`), apiRequest<Resident[]>(`${base}/residents`), apiRequest<Room[]>(`${base}/rooms`),
-        apiRequest<Allocation[]>(`${base}/allocations`), getAdminToken() ? apiRequest<AuditLog[]>(`${base}/audit`) : Promise.resolve([]), apiRequest<Report>(`${base}/report`),
-        getAdminToken() ? apiRequest<LotteryDrawRecord[]>(`${base}/draws`) : Promise.resolve([])
-      ]);
-      if (requestSequence !== refreshSequence.current) return;
-      setDashboard(dashboardData); setResidents(residentData); setRooms(roomData); setAllocations(allocationData); setAudits(auditData); setReport(reportData);
-      setActiveDrawCycleId(drawData.find((draw) => ["Preparing", "Ready", "In Progress"].includes(draw.status))?.id ?? null);
-    } catch (err) {
-      if (requestSequence === refreshSequence.current) {
-        setGlobalError(err instanceof Error ? err.message : "The dashboard could not connect to the backend API.");
-      }
-    } finally {
-      if (requestSequence === refreshSequence.current) setLoading(false);
-    }
-  }, [selectedBuildingId]);
-
-  const navigate = useCallback((page: PageKey, replace = false, state?: Record<string, unknown>) => {
-    const method = replace ? "replaceState" : "pushState";
-    window.history[method](state ?? {}, "", pagePaths[page]);
-    setActivePage(page);
-  }, []);
-
-  useEffect(() => { void refreshAll(); }, [refreshAll, sessionStatus]);
+  function navigate(to: string, replace = false) {
+    window.history[replace ? "replaceState" : "pushState"]({}, "", to);
+    setPath(to);
+  }
 
   useEffect(() => {
-    const refreshCycleState = () => { void refreshAll(); };
-    window.addEventListener("draw-cycle-changed", refreshCycleState);
-    window.addEventListener("building-updated", refreshCycleState);
+    let live = true;
+    if (getAdminToken()) {
+      apiRequest<{ role: string }>("/admin/session")
+        .then(data => { if (live) setRole(data.role === "admin" ? "admin" : null); })
+        .catch(() => { if (live) setRole(null); });
+    } else if (getResidentToken()) {
+      apiRequest<{ role: string; full_name: string }>("/resident/session")
+        .then(data => { if (live) { setRole(data.role === "resident" ? "resident" : null); setResidentName(data.full_name); } })
+        .catch(() => { if (live) setRole(null); });
+    } else setRole(null);
+    return () => { live = false; };
+  }, []);
+
+  useEffect(() => {
+    const onPop = () => setPath(window.location.pathname);
+    const adminLogin = () => { setRole("admin"); setPath(window.location.pathname); };
+    const adminLogout = () => { setRole(null); setPath(window.location.pathname); };
+    const adminExpired = () => {
+      window.sessionStorage.setItem("fairroom_admin_session_notice", "Your admin session has expired. Please log in again.");
+      setRole(null); setPath(window.location.pathname);
+    };
+    const residentExpired = () => { setRole(null); navigate("/resident/login", true); };
+    window.addEventListener("popstate", onPop);
+    window.addEventListener("fairroom-admin-login", adminLogin);
+    window.addEventListener("fairroom-admin-logout", adminLogout);
+    window.addEventListener("admin-session-expired", adminExpired);
+    window.addEventListener("resident-session-expired", residentExpired);
     return () => {
-      window.removeEventListener("draw-cycle-changed", refreshCycleState);
-      window.removeEventListener("building-updated", refreshCycleState);
+      window.removeEventListener("popstate", onPop); window.removeEventListener("fairroom-admin-login", adminLogin);
+      window.removeEventListener("fairroom-admin-logout", adminLogout); window.removeEventListener("admin-session-expired", adminExpired);
+      window.removeEventListener("resident-session-expired", residentExpired);
     };
-  }, [refreshAll]);
-
-  useEffect(() => {
-    const onPopState = () => setActivePage(pageFromLocation());
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    if (!getAdminToken()) { setSessionStatus("anonymous"); return; }
-    setSessionStatus("checking");
-    const requestedPage = pageFromLocation();
-    apiRequest<{ email: string }>("/admin/session")
-      .then((data) => { if (!cancelled) { setAdminEmailState(data.email); setSessionStatus("authenticated"); } })
-      .catch(() => {
-        if (!cancelled) {
-          if (protectedPages.has(requestedPage)) {
-            setLoginNotice("Your admin session has expired. Please log in again.");
-            navigate("admin", true, { returnTo: pagePaths[requestedPage] });
-          }
-          setSessionStatus("anonymous");
-        }
+    if (role === "checking") return;
+    if (role === "resident" && !path.startsWith("/resident/")) navigate("/resident/dashboard", true);
+    if (role === "admin" && path.startsWith("/resident/")) navigate("/admin/dashboard", true);
+    if (!role && path.startsWith("/resident/") && path !== "/resident/login") navigate("/resident/login", true);
+    if (!role && path.startsWith("/admin/") && path !== "/admin/login") navigate("/admin-login", true);
+  }, [role, path]);
+
+  async function residentLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setLoading(true); setError(null);
+    try {
+      const data = await apiRequest<{ token: string; role: string; full_name: string }>("/resident/login", {
+        method: "POST", body: JSON.stringify({ resident_id: Number(residentId), password })
       });
-    return () => { cancelled = true; };
-  }, [navigate]);
-
-  useEffect(() => {
-    const expired = () => {
-      const currentPage = pageFromLocation();
-      const returnTo = protectedPages.has(currentPage) ? pagePaths[currentPage] : undefined;
-      setSessionStatus("anonymous"); setAdminEmailState(null);
-      if (returnTo) {
-        setLoginNotice("Your admin session has expired. Please log in again.");
-        navigate("admin", true, { returnTo });
-      }
-    };
-    window.addEventListener("admin-session-expired", expired);
-    return () => window.removeEventListener("admin-session-expired", expired);
-  }, [navigate]);
-
-  useEffect(() => {
-    if (pageFromLocation() !== activePage) return;
-    if (!protectedPages.has(activePage) || sessionStatus === "checking" || sessionStatus === "authenticated") return;
-    setLoginNotice(current => current ?? "Admin login is required to access this page.");
-    navigate("admin", true, { returnTo: pagePaths[activePage] });
-  }, [activePage, navigate, sessionStatus]);
-
-  function login(token: string) {
-    storeAdminToken(token); setSessionStatus("authenticated"); setAdminEmailState(getAdminEmail()); setLoginNotice(null);
-    const returnPage = safeReturnPage(window.history.state?.returnTo);
-    navigate(returnPage, true); void refreshBuildings();
+      if (data.role !== "resident") throw new Error("Resident access could not be verified.");
+      clearAdminToken(); setResidentToken(data.token); setResidentName(data.full_name);
+      setPassword(""); setRole("resident"); navigate("/resident/dashboard", true);
+    } catch (err) { setError(err instanceof Error ? err.message : "Resident login failed."); }
+    finally { setLoading(false); }
   }
 
-  async function logout() {
-    const logoutRequest = apiRequest<void>("/admin/logout", { method: "POST" });
-    clearAdminToken(); setSessionStatus("anonymous"); setAdminEmailState(null); setLoginNotice(null); navigate("admin");
-    try { await logoutRequest; } catch { /* local logout always succeeds */ }
+  async function residentLogout() {
+    const request = apiRequest("/resident/logout", { method: "POST" });
+    clearResidentToken(); setRole(null); setResidentName(""); navigate("/login", true);
+    try { await request; } catch { /* local session is cleared even when backend is unavailable */ }
   }
 
-  async function resetDemoData() {
-    if (!selectedBuildingId) throw new Error("Select or add a building to continue.");
-    const result = await apiRequest<DemoResetResponse>(`/buildings/${selectedBuildingId}/demo/reset`, { method: "POST" }); await refreshAll(); return result;
-  }
+  if (role === "checking") return <div className="flex min-h-screen items-center justify-center bg-ivory text-sm font-semibold text-forest">Checking your session…</div>;
+  if (role === "resident") return <ResidentPortal residentName={residentName} onLogout={() => void residentLogout()} />;
+  if (role === "admin") return <AdminApp />;
+  if (path === "/admin-login" || path === "/admin/login" || ["/residents", "/rooms", "/lottery", "/results", "/audit", "/report", "/resident-search", "/resident-history", "/draw-history", "/draw-cycle-setup", "/eligibility"].includes(path)) return <AdminApp />;
 
-  const isAdmin = sessionStatus === "authenticated";
-  const protectedContent = (content: ReactNode) => <ProtectedRoute sessionStatus={sessionStatus}>{content}</ProtectedRoute>;
-  const page = (() => {
-    switch (activePage) {
-      case "dashboard": return !selectedBuilding&&!buildingsLoading?<div className="rounded-xl border border-sage bg-white p-8 text-center shadow-soft"><h2 className="text-2xl font-bold text-navy">No buildings have been added yet.</h2>{isAdmin?<button className="mt-4 rounded-lg bg-earth px-4 py-2 font-bold text-white hover:bg-forest" onClick={()=>window.dispatchEvent(new Event("add-building"))}>Add Your First Building</button>:null}</div>:<Dashboard stats={dashboard} allocations={allocations} loading={loading||buildingsLoading} isAdmin={isAdmin} onDemoReset={resetDemoData} onAdminLogin={() => navigate("admin")} />;
-      case "residents": return protectedContent(<ResidentRegistration buildingId={selectedBuildingId!} buildingName={selectedBuilding?.building_name??""} residents={residents} isAdmin={isAdmin} onRefresh={refreshAll} />);
-      case "rooms": return protectedContent(<RoomManagement buildingId={selectedBuildingId!} buildingName={selectedBuilding?.building_name??""} rooms={rooms} isAdmin={isAdmin} onRefresh={refreshAll} />);
-      case "lottery": return protectedContent(<LotteryDraw buildingId={selectedBuildingId!} buildingName={selectedBuilding?.building_name??""} stats={dashboard} allocations={allocations} isAdmin={isAdmin} onRefresh={refreshAll} />);
-      case "results": return protectedContent(<AllocationResults buildingId={selectedBuildingId!} allocations={allocations} stats={dashboard} />);
-      case "audit": return protectedContent(<AuditLogs audits={audits} />);
-      case "report": return protectedContent(<TransparencyReport buildingId={selectedBuildingId!} report={report} />);
-      case "residentSearch": return <ResidentSearch />;
-      case "residentHistory": return protectedContent(<ResidentHistory buildingId={selectedBuildingId!} buildingName={selectedBuilding?.building_name??""}/>);
-      case "drawHistory": return protectedContent(<DrawHistory buildingId={selectedBuildingId!} buildingName={selectedBuilding?.building_name??""}/>);
-      case "drawCycleSetup": return protectedContent(<DrawCycleSetup buildingId={selectedBuildingId!} buildingName={selectedBuilding?.building_name??""}/>);
-      case "eligibility": return protectedContent(<EligibilityCriteria key={selectedBuildingId} buildingId={selectedBuildingId!} buildingName={selectedBuilding?.building_name??""} residents={residents} />);
-      case "admin": return <AdminLogin isAdmin={isAdmin} onLogin={login} onLogout={logout} notice={loginNotice} />;
-    }
-  })();
-
-  return <Shell activePage={activePage} activeDrawCycleId={activeDrawCycleId} isAdmin={isAdmin} adminEmail={adminEmail} onNavigate={navigate} onLogout={logout}>
-    {globalError ? <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{globalError}</div> : null}
-    {page}
-  </Shell>;
+  return <main className="flex min-h-screen items-center justify-center bg-ivory px-4 py-8">
+    <div className="w-full max-w-xl rounded-2xl border border-sage bg-white p-6 shadow-soft sm:p-8">
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-earth text-white"><Sparkles className="h-6 w-6" aria-hidden="true" /></div>
+      <p className="mt-5 text-sm font-bold uppercase tracking-[0.16em] text-earth">FairRoom</p>
+      <h1 className="mt-2 text-3xl font-extrabold text-navy">Intelligent Housing Allocation System</h1>
+      {path === "/resident/login" ? <>
+        <p className="mt-3 text-sm text-slate-600">Sign in with the resident ID and password provided by your building administrator.</p>
+        <form className="mt-6 space-y-4" onSubmit={event => void residentLogin(event)}>
+          <div><label className="text-sm font-semibold text-navy" htmlFor="resident_id">Resident ID</label>
+            <input className="focus-ring mt-1 w-full rounded-lg border px-3 py-2" id="resident_id" inputMode="numeric" min="1" type="number"
+              value={residentId} onChange={event => setResidentId(event.target.value)} required /></div>
+          <div><label className="text-sm font-semibold text-navy" htmlFor="resident_password">Password</label>
+            <input className="focus-ring mt-1 w-full rounded-lg border px-3 py-2" id="resident_password" type="password" autoComplete="current-password"
+              value={password} onChange={event => setPassword(event.target.value)} required /></div>
+          {error ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+          <button className="focus-ring w-full rounded-lg bg-earth px-4 py-3 font-bold text-white hover:bg-forest disabled:opacity-50" disabled={loading} type="submit">
+            {loading ? "Signing in…" : "Login as Resident"}</button>
+        </form>
+        <button className="focus-ring mt-4 text-sm font-semibold text-earth hover:text-forest" onClick={() => navigate("/login")} type="button">Back to role selection</button>
+      </> : <>
+        <p className="mt-3 text-sm text-slate-600">Choose how you want to continue.</p>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <button className="focus-ring flex items-center gap-3 rounded-xl border border-sage bg-sage-light/40 p-4 text-left font-bold text-forest hover:bg-sage-light"
+            onClick={() => navigate("/admin-login")} type="button"><LockKeyhole className="h-5 w-5" aria-hidden="true"/>Admin Login</button>
+          <button className="focus-ring flex items-center gap-3 rounded-xl border border-sage bg-sage-light/40 p-4 text-left font-bold text-forest hover:bg-sage-light"
+            onClick={() => navigate("/resident/login")} type="button"><Home className="h-5 w-5" aria-hidden="true"/>Resident Login</button>
+        </div>
+      </>}
+    </div>
+  </main>;
 }

@@ -36,9 +36,10 @@ async function expectNonEmptyDownload(page: Page, linkName: string) {
   expect((await fs.stat(filePath!)).size).toBeGreaterThan(0);
 }
 
-test("complete reset, resident, lottery, reporting and public-search flow", async ({ page, request }, testInfo) => {
+test("complete reset, resident, lottery, reporting and admin-search flow", async ({ page, request }, testInfo) => {
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "Reset Selected Building" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Admin Login" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reset Selected Building" })).toHaveCount(0);
 
   await login(page);
   const resetButton = page.getByRole("button", { name: "Reset Selected Building" });
@@ -51,7 +52,7 @@ test("complete reset, resident, lottery, reporting and public-search flow", asyn
   const token = await page.evaluate(() => localStorage.getItem("ai_lottery_admin_token"));
   expect(token).toBeTruthy();
   const auth = { Authorization: `Bearer ${token}` };
-  const resetStats = await (await request.get(`${API}/dashboard`)).json();
+  const resetStats = await (await request.get(`${API}/dashboard`, { headers: auth })).json();
   expect(resetStats).toMatchObject({ total_residents: 5, total_rooms: 16, allocated_rooms: 0, lottery_locked: false });
   expect(resetStats.lottery_completed_at).toBeFalsy();
   const resetAudits = await (await request.get(`${API}/audit`, { headers: auth })).json();
@@ -61,7 +62,7 @@ test("complete reset, resident, lottery, reporting and public-search flow", asyn
   await page.getByRole("button", { name: /Resident Registration/ }).click();
   const uniqueResident = { name: "E2E Resident", aadhaar: "811122223333", room: "E2E-ROOM-901", contact: "9123456780" };
   await submitResident(page, uniqueResident);
-  await expect(page.getByText(/E2E Resident saved with masked Aadhaar/)).toBeVisible();
+  await expect(page.getByText(/E2E Resident saved. Resident login ID:/)).toBeVisible();
 
   await submitResident(page, { name: "Duplicate Aadhaar", aadhaar: uniqueResident.aadhaar, room: "E2E-ROOM-902", contact: "9123456781" });
   await expect(page.getByText("Duplicate Aadhaar or ID number detected.")).toBeVisible();
@@ -91,11 +92,11 @@ test("complete reset, resident, lottery, reporting and public-search flow", asyn
   await expect(page.getByText("Lottery Locked")).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("lottery-completed.png"), fullPage: true });
 
-  const allocations = await (await request.get(`${API}/allocations`)).json();
+  const allocations = await (await request.get(`${API}/allocations`, { headers: auth })).json();
   expect(allocations.length).toBeGreaterThan(0);
   expect(new Set(allocations.map((item: { resident_id: number }) => item.resident_id)).size).toBe(allocations.length);
   expect(new Set(allocations.map((item: { room_id: number }) => item.room_id)).size).toBe(allocations.length);
-  const completedStats = await (await request.get(`${API}/dashboard`)).json();
+  const completedStats = await (await request.get(`${API}/dashboard`, { headers: auth })).json();
   expect(completedStats.lottery_locked).toBe(true);
   expect(completedStats.lottery_completed_at).toBeTruthy();
 
@@ -110,6 +111,9 @@ test("complete reset, resident, lottery, reporting and public-search flow", asyn
   await expect(page.getByText(/No manual override was used/)).toBeVisible();
   await expectNonEmptyDownload(page, "Export CSV");
 
+  await page.getByRole("button", { name: "Home Dashboard" }).click();
+  await expectNonEmptyDownload(page, "Download Latest Certificate");
+
   await page.getByRole("button", { name: /Transparency Report/ }).click();
   await expect(page.getByRole("heading", { name: "Audit-ready project certificate" })).toBeVisible();
   await expectNonEmptyDownload(page, "Download PDF Report");
@@ -123,7 +127,6 @@ test("complete reset, resident, lottery, reporting and public-search flow", asyn
     expect(actions.has(action), `missing audit action: ${action}`).toBe(true);
   }
 
-  await page.getByRole("button", { name: "Logout" }).click();
   await page.getByRole("button", { name: /Resident Search/ }).click();
   await expect(page).toHaveURL(/\/resident-search$/);
   await page.getByLabel("Aadhaar last 4 digits or old room number").fill(uniqueResident.room);
@@ -132,5 +135,8 @@ test("complete reset, resident, lottery, reporting and public-search flow", asyn
   await expect(page.getByText("Allocated", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "AI Explanation" })).toBeVisible();
   await expect(page.getByText(/No manual override was used/)).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath("public-resident-search.png"), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("admin-resident-search.png"), fullPage: true });
+  await page.getByRole("button", { name: "Logout" }).click();
+  await expect(page).toHaveURL(/\/admin-login$/);
+  expect((await request.get(`${API}/resident/search?building_id=1&query=E2E-ROOM-901`)).status()).toBe(401);
 });

@@ -2,7 +2,7 @@ import { Award, Download, FileText, KeyRound, Printer, ShieldCheck } from "lucid
 
 import { EmptyState } from "../components/EmptyState";
 import { StatusPill } from "../components/StatusPill";
-import { downloadUrl } from "../lib/api";
+import { authenticatedDownload, downloadUrl } from "../lib/api";
 import type { TransparencyReport as TransparencyReportType } from "../types";
 
 interface TransparencyReportProps {
@@ -27,7 +27,7 @@ export function TransparencyReport({ buildingId, report }: TransparencyReportPro
         <div className="bg-gradient-to-r from-cream via-white to-sage-light p-5 sm:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-terracotta-dark">Public transparency document</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-terracotta-dark">Admin transparency document</p>
               <h2 className="mt-2 text-2xl font-bold text-navy sm:text-3xl">Audit-ready project certificate</h2>
               <p className="mt-2 max-w-3xl text-slate-600">
                 Includes society details, rules, seed, allocation list, fairness score, AI summary, and audit log summary.
@@ -37,6 +37,7 @@ export function TransparencyReport({ buildingId, report }: TransparencyReportPro
               <a
                 className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-earth px-4 py-2 font-semibold text-white hover:bg-forest"
                 href={downloadUrl(`/buildings/${buildingId}/report.pdf`)}
+                onClick={event => { event.preventDefault(); void authenticatedDownload(`/buildings/${buildingId}/report.pdf`, "fairroom-report.pdf"); }}
               >
                 <Download aria-hidden="true" className="h-4 w-4" />
                 Download PDF Report
@@ -44,6 +45,7 @@ export function TransparencyReport({ buildingId, report }: TransparencyReportPro
               <a
                 className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50"
                 href={downloadUrl(`/buildings/${buildingId}/report.csv`)}
+                onClick={event => { event.preventDefault(); void authenticatedDownload(`/buildings/${buildingId}/report.csv`, "fairroom-report.csv"); }}
               >
                 <FileText aria-hidden="true" className="h-4 w-4" />
                 Export CSV
@@ -81,6 +83,7 @@ export function TransparencyReport({ buildingId, report }: TransparencyReportPro
               <a
                 className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-earth px-4 py-2 font-semibold text-white hover:bg-forest"
                 href={downloadUrl(`/buildings/${buildingId}/report/certificate`)}
+                onClick={event => { event.preventDefault(); void authenticatedDownload(`/buildings/${buildingId}/report/certificate`, "fairroom-certificate.pdf"); }}
               >
                 <Download aria-hidden="true" className="h-4 w-4" />
                 Download Certificate PDF

@@ -9,6 +9,9 @@ SQLite is used for local persistence. Migrations in `backend/app/database.py` ar
 | `buildings` | Building master. PK `id`; names, project, address, nullable map location, status and archive timestamp. |
 | `building_settings` | Per-building lottery/session state. Composite PK `(building_id, key)`; FK to building. |
 | `residents` | Building resident records. PK `id`; FK `building_id`; masked Aadhaar, SHA-256 hash, old room, priority, consent and verification. Optional date of birth, residency start, policy category and annual income support configured rules. |
+| `resident_credentials` | One-to-one portal password hash for an existing resident ID; no duplicate resident identity. |
+| `resident_sessions` | SHA-256 token hash, resident ID and UTC expiry. Logout/password reset removes sessions. |
+| `resident_login_attempts` | Failed login counter and temporary lockout for an existing resident ID. |
 | `rooms` | Building room inventory. PK `id`; FK `building_id`; room number, wing, floor, size, status and suitability. |
 | `allocations` | Current allocation projection. PK `id`; FKs to building, resident, room and draw; seed, score and explanation. |
 | `lottery_draws` | Authoritative draw-cycle record. Draw number/reference/name/phase, status, counts, seed, score, timestamps, reasons and building snapshots. |
@@ -33,6 +36,7 @@ SQLite is used for local persistence. Migrations in `backend/app/database.py` ar
 - Draw numbers are unique per building and draw references are globally unique.
 - Historical tables store display snapshots rather than relying only on mutable current rows.
 - Rule-set versions are unique within each building; rule names are unique within a version. A draw stores the rule-set ID and version as well as its immutable JSON snapshot.
+- Resident credential and session tables are added idempotently and do not alter resident, allocation or history IDs. Passwords and raw resident tokens are never stored in SQLite.
 
 ## Building Location Columns
 
@@ -52,6 +56,9 @@ Latitude and longitude are both null or both present. Existing buildings remain 
 ```mermaid
 erDiagram
   BUILDINGS ||--o{ RESIDENTS : contains
+  RESIDENTS ||--o| RESIDENT_CREDENTIALS : signs_in_with
+  RESIDENTS ||--o{ RESIDENT_SESSIONS : opens
+  RESIDENTS ||--o| RESIDENT_LOGIN_ATTEMPTS : limits
   BUILDINGS ||--o{ ROOMS : contains
   BUILDINGS ||--o{ BUILDING_SETTINGS : configures
   BUILDINGS ||--o{ LOTTERY_DRAWS : conducts

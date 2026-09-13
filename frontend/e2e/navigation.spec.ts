@@ -92,14 +92,12 @@ test.describe.serial("responsive application navigation", () => {
     await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
   });
 
-  test("logged-out protected item is locked and preserves return-after-login", async ({ page }) => {
+  test("welcome page selects a role and a protected URL preserves return-after-login", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
-    const protectedItem = page
-      .getByTestId("desktop-sidebar")
-      .getByRole("button", { name: "Resident Registration, admin access required", exact: true });
-    await expect(protectedItem).toBeVisible();
-    await protectedItem.click();
+    await expect(page.getByRole("button", { name: "Admin Login" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Resident Login" })).toBeVisible();
+    await page.goto("/residents");
     await expect(page).toHaveURL(/\/admin-login$/);
     await expect(page.getByRole("heading", { name: "Admin Login Required" })).toBeVisible();
     await page.getByLabel("Admin Email").fill("admin@example.com");
@@ -111,7 +109,7 @@ test.describe.serial("responsive application navigation", () => {
   test("tablet starts collapsed and can expand", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.addInitScript(() => localStorage.removeItem("sidebarCollapsed"));
-    await page.goto("/");
+    await login(page);
     const sidebar = page.getByTestId("desktop-sidebar");
     await expect(sidebar).toBeVisible();
     await expect(sidebar).toHaveAttribute("data-collapsed", "true");
@@ -122,7 +120,7 @@ test.describe.serial("responsive application navigation", () => {
 
   test("mobile drawer opens, closes after navigation, and supports Escape", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/");
+    await login(page);
     await expect(page.getByTestId("desktop-sidebar")).toBeHidden();
     await expect(page.getByLabel("Current Building:")).toBeVisible();
 

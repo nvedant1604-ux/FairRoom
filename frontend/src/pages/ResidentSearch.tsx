@@ -3,7 +3,7 @@ import { Bot, Download, Home, Info, Search, ShieldCheck } from "lucide-react";
 
 import { EmptyState } from "../components/EmptyState";
 import { StatusPill } from "../components/StatusPill";
-import { apiRequest, downloadUrl } from "../lib/api";
+import { apiRequest, authenticatedDownload, downloadUrl } from "../lib/api";
 import type { ResidentSearchResult } from "../types";
 import { useBuilding } from "../context/BuildingContext";
 
@@ -62,7 +62,7 @@ export function ResidentSearch() {
   return (
     <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
-        <p className="text-sm font-semibold uppercase tracking-[0.14em] text-earth">Public resident lookup</p>
+        <p className="text-sm font-semibold uppercase tracking-[0.14em] text-earth">Admin resident lookup</p>
         <h2 className="mt-2 text-2xl font-bold text-navy">Check allocation status</h2>
         <p className="mt-2 text-sm text-slate-600">
           Search using Aadhaar last 4 digits or old room number. Full Aadhaar is never shown.
@@ -194,6 +194,7 @@ export function ResidentSearch() {
             <a
               className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-lg bg-earth px-4 py-3 font-semibold text-white hover:bg-forest sm:w-auto"
               href={downloadUrl(`/resident/certificate?building_id=${selectedBuildingId}&query=${encodeURIComponent(query)}`)}
+              onClick={event => { event.preventDefault(); void authenticatedDownload(`/resident/certificate?building_id=${selectedBuildingId}&query=${encodeURIComponent(query)}`, "resident-certificate.pdf"); }}
             >
               <Download aria-hidden="true" className="h-4 w-4" />
               Download Allocation Certificate

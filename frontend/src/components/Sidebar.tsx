@@ -21,6 +21,7 @@ interface SidebarProps {
   activeDrawCycleId: number | null;
   collapsed: boolean;
   isAdmin: boolean;
+  isResident?: boolean;
   mobile?: boolean;
   onClose?: () => void;
   onNavigate: (page: PageKey) => void;
@@ -64,9 +65,20 @@ const navigationGroups: Array<{ label: string; items: NavigationItem[] }> = [
     label: "Reports",
     items: [
       { key: "report", label: "Transparency Report", icon: ScrollText, protected: true },
-      { key: "residentSearch", label: "Resident Search", icon: Search }
+      { key: "residentSearch", label: "Resident Search", icon: Search, protected: true }
     ]
   }
+];
+
+const residentNavigation: Array<{ label: string; items: NavigationItem[] }> = [
+  { label: "My Housing", items: [
+    { key: "residentDashboard", label: "Dashboard", icon: Home },
+    { key: "residentProfile", label: "My Profile", icon: Users },
+    { key: "residentEligibility", label: "My Eligibility", icon: ListChecks },
+    { key: "residentLottery", label: "My Lottery", icon: Sparkles },
+    { key: "residentAllocation", label: "My Allocation", icon: ClipboardCheck },
+    { key: "residentHistorySelf", label: "My History", icon: History }
+  ] }
 ];
 
 export function Sidebar({
@@ -74,6 +86,7 @@ export function Sidebar({
   activeDrawCycleId,
   collapsed,
   isAdmin,
+  isResident = false,
   mobile = false,
   onClose,
   onNavigate
@@ -124,7 +137,7 @@ export function Sidebar({
       </div>
 
       <nav aria-label="Main navigation" className="flex-1 overflow-y-auto px-3 py-4">
-        {navigationGroups.map((group, groupIndex) => {
+        {(isResident ? residentNavigation : navigationGroups).map((group, groupIndex) => {
           const visibleItems = group.items.filter(
             (item) => !item.activeCycleOnly || Boolean(activeDrawCycleId) || activePage === item.key
           );

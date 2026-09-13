@@ -3,7 +3,7 @@ import { Award, Brain, CalendarClock, ChevronDown, Download, Printer, ShieldChec
 
 import { EmptyState } from "../components/EmptyState";
 import { StatusPill } from "../components/StatusPill";
-import { downloadUrl } from "../lib/api";
+import { authenticatedDownload, downloadUrl } from "../lib/api";
 import type { Allocation, DashboardStats } from "../types";
 
 interface AllocationResultsProps {
@@ -44,6 +44,7 @@ export function AllocationResults({ buildingId, allocations, stats }: Allocation
             <a
               className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-earth px-4 py-2 font-semibold text-white hover:bg-forest"
               href={downloadUrl(`/buildings/${buildingId}/report.csv`)}
+              onClick={event => { event.preventDefault(); void authenticatedDownload(`/buildings/${buildingId}/report.csv`, "fairroom-allocations.csv"); }}
             >
               <Download aria-hidden="true" className="h-4 w-4" />
               Export CSV

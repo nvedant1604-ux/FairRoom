@@ -165,6 +165,30 @@ def init_db() -> None:
     migrate_google_maps()
     migrate_history()
     migrate_eligibility_rules()
+    migrate_resident_accounts()
+
+
+def migrate_resident_accounts() -> None:
+    """Keep portal credentials separate from resident and historical records."""
+    with get_connection() as conn:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS resident_credentials (
+                resident_id INTEGER PRIMARY KEY REFERENCES residents(id) ON DELETE CASCADE,
+                password_hash TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS resident_sessions (
+                token_hash TEXT PRIMARY KEY,
+                resident_id INTEGER NOT NULL REFERENCES residents(id) ON DELETE CASCADE,
+                expires_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_resident_sessions_resident ON resident_sessions(resident_id);
+            CREATE TABLE IF NOT EXISTS resident_login_attempts (
+                resident_id INTEGER PRIMARY KEY REFERENCES residents(id) ON DELETE CASCADE,
+                failed_attempts INTEGER NOT NULL DEFAULT 0,
+                locked_until TEXT
+            );
+        """)
 
 
 def _columns(conn: sqlite3.Connection, table: str) -> set[str]:

@@ -11,4 +11,10 @@ export type PageKey =
   | "drawHistory"
   | "drawCycleSetup"
   | "eligibility"
-  | "admin";
+  | "admin"
+  | "residentDashboard"
+  | "residentProfile"
+  | "residentEligibility"
+  | "residentLottery"
+  | "residentAllocation"
+  | "residentHistorySelf";

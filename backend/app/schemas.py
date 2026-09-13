@@ -11,6 +11,15 @@ class AdminLogin(BaseModel):
     password: str
 
 
+class ResidentLogin(BaseModel):
+    resident_id: int = Field(gt=0)
+    password: str = Field(min_length=1, max_length=128)
+
+
+class ResidentPassword(BaseModel):
+    password: str = Field(min_length=12, max_length=128)
+
+
 class ResidentCreate(BaseModel):
     full_name: str = Field(min_length=2, max_length=100)
     aadhaar_number: str = Field(max_length=32)
@@ -25,6 +34,7 @@ class ResidentCreate(BaseModel):
     residency_start_date: str | None = None
     resident_category: str | None = Field(default=None, max_length=100)
     annual_income: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    portal_password: str | None = Field(default=None, min_length=12, max_length=128)
 
     @field_validator("date_of_birth", "residency_start_date")
     @classmethod

@@ -9,6 +9,8 @@ interface ShellProps {
   activePage: PageKey;
   activeDrawCycleId: number | null;
   isAdmin: boolean;
+  isResident?: boolean;
+  residentName?: string | null;
   adminEmail: string | null;
   onNavigate: (page: PageKey) => void;
   onLogout: () => void;
@@ -28,7 +30,13 @@ const pageTitles: Record<PageKey, string> = {
   drawHistory: "Draw History",
   drawCycleSetup: "Draw Cycle Setup",
   eligibility: "Eligibility Criteria",
-  admin: "Admin Login"
+  admin: "Admin Login",
+  residentDashboard: "Resident Dashboard",
+  residentProfile: "My Profile",
+  residentEligibility: "My Eligibility",
+  residentLottery: "My Lottery",
+  residentAllocation: "My Allocation",
+  residentHistorySelf: "My History"
 };
 
 function initialCollapsedState() {
@@ -41,6 +49,8 @@ export function Shell({
   activePage,
   activeDrawCycleId,
   isAdmin,
+  isResident = false,
+  residentName,
   adminEmail,
   onNavigate,
   onLogout,
@@ -81,6 +91,7 @@ export function Shell({
           activePage={activePage}
           collapsed={collapsed}
           isAdmin={isAdmin}
+          isResident={isResident}
           onNavigate={onNavigate}
         />
       </div>
@@ -119,16 +130,16 @@ export function Shell({
               </div>
             </div>
 
-            <div className="order-3 w-full xl:order-none xl:w-auto">
+            {!isResident ? <div className="order-3 w-full xl:order-none xl:w-auto">
               <BuildingControls isAdmin={isAdmin} />
-            </div>
+            </div> : null}
 
             <div className="flex min-w-0 items-center gap-2">
-              {isAdmin ? (
+              {isAdmin || isResident ? (
                 <>
                   <div className="min-w-0 text-right">
-                    <p className="hidden text-xs font-semibold text-fairness lg:block">Admin session active</p>
-                    <p className="max-w-44 truncate text-sm font-semibold text-navy">{adminEmail ?? "Admin"}</p>
+                    <p className="hidden text-xs font-semibold text-fairness lg:block">{isAdmin ? "Admin session active" : "Resident session active"}</p>
+                    <p className="max-w-44 truncate text-sm font-semibold text-navy">{isAdmin ? adminEmail ?? "Admin" : residentName ?? "Resident"}</p>
                   </div>
                   <button
                     aria-label="Logout"
@@ -172,6 +183,7 @@ export function Shell({
               activePage={activePage}
               collapsed={false}
               isAdmin={isAdmin}
+              isResident={isResident}
               mobile
               onClose={() => setMobileOpen(false)}
               onNavigate={onNavigate}

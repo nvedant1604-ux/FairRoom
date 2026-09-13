@@ -6,7 +6,8 @@ This BSc IT final-year project supports fair and transparent room allocation thr
 
 ## Main Features
 
-- Secure admin Bearer-token authentication and protected routes
+- Admin and Resident entry/login flows with server-validated roles and protected routes
+- Resident portal for own profile, live eligibility explanation, lottery result, allocation and history
 - Multi-building creation, selection, editing and archiving
 - Building-specific residents, rooms, settings and audits
 - Masked/hash-based Aadhaar/ID duplicate protection
@@ -19,9 +20,9 @@ This BSc IT final-year project supports fair and transparent room allocation thr
 - Multiple independent draw phases with immutable snapshots
 - Fairness score and readable allocation explanations
 - Draw history, audit logs, CSV/PDF reports and certificates
-- Public building list and resident allocation search
+- Public building list; allocation search and reports require Admin access
 - Lazy-loaded standard 2D Google Maps building location, marker, address lookup and external map links
-- Isolated Playwright E2E suite: 21 passed, with Google-free deterministic map test mode
+- Isolated Playwright E2E suite with Google-free deterministic map test mode
 - Historical draw snapshots retain the exact criteria version and per-resident evaluation used before lottery selection
 
 ## Technology Stack
@@ -99,6 +100,8 @@ VITE_GOOGLE_MAPS_TEST_MODE=false
 
 Override with `AI_LOTTERY_ADMIN_EMAIL` and `AI_LOTTERY_ADMIN_PASSWORD`. These defaults are for local demonstration only and must be changed before deployment.
 
+The welcome page lets people choose **Admin Login** or **Resident Login**. Admins may set a portal password when registering a resident or use **Set portal password** on an existing resident in Resident Registration. The resident signs in with their existing numeric resident ID and that password. Passwords must contain at least 12 characters. Setting a new password invalidates the resident's prior sessions; no resident record is duplicated. Residents see only their own building, current eligibility, draw participation/result, room allocation and history. Admin credentials and pages remain separate.
+
 ## Main Workflow
 
 ### Multi-Building
@@ -128,7 +131,7 @@ An activated version is immutable. To change a policy, create a new draft versio
 
 ```powershell
 python -m compileall backend\app
-python -m unittest discover -s backend\tests -v
+python -m pytest
 
 cd frontend
 npm.cmd run build
@@ -159,6 +162,6 @@ It also sets `VITE_GOOGLE_MAPS_TEST_MODE=true`, renders a deterministic placehol
 
 ## Security and Production Limitations
 
-The current application is a college MVP. SQLite, one demonstration administrator, local-storage token handling, manual document verification and simple PDF generation should be replaced or strengthened for a real concurrent deployment. Use HTTPS, PostgreSQL, password hashing or an identity provider, role-based accounts, managed secrets, monitoring, encrypted backups and independent security/legal review.
+The current application is a college MVP. SQLite, one demonstration administrator, local-storage token handling, manual document verification and simple PDF generation should be strengthened for a real concurrent deployment. Use HTTPS, managed secrets, monitoring, encrypted backups and independent security/legal review. Resident passwords are hashed; the existing Admin credentials should be configured through environment variables before deployment.
 
 Full Aadhaar/ID values are not stored; the backend stores a masked value and normalized SHA-256 hash. This is duplicate protection, not official Aadhaar verification.

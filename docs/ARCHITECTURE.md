@@ -3,12 +3,12 @@
 ## Components
 
 - **React frontend:** responsive pages rendered inside a shared `Shell`.
-- **Protected routes:** the application checks the stored session and returns unauthenticated users to `/admin-login`.
+- **Protected routes:** a welcome page selects Admin or Resident login; restored tokens are checked against role-specific server session endpoints before private pages render.
 - **BuildingContext:** loads the building list and maintains the selected building across pages.
 - **Building map module:** lazy-loads the official Google Maps JavaScript API only for the Dashboard and open Add/Edit map sections, owns one 2D marker/info window and clears them on building changes.
 - **API client:** attaches the Bearer token, formats FastAPI errors and handles session expiry.
 - **FastAPI backend:** validates requests and exposes public and authenticated endpoints.
-- **Authentication layer:** validates local credentials and server-side session tokens.
+- **Authentication layer:** preserves the Admin token mechanism, hashes resident passwords and tokens, expires resident sessions after 12 hours and enforces roles for legacy and new API routes.
 - **Building-scoped services:** every managed resource is checked against its building.
 - **Fairness engine:** performs validation, seeded shuffling, priority grouping, suitability matching and scoring.
 - **Eligibility engine:** evaluates building-specific hard and priority rules before draw participation, with explanations and immutable version snapshots.
@@ -36,14 +36,18 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  L[Admin Login] --> V[Credentials Validation]
-  V --> T[Secure Random Session Token]
-  T --> H[Authorization: Bearer Header]
-  H --> P[Protected Endpoint]
-  P -->|invalid or logged out| L
+  W[Welcome] --> A[Admin Login]
+  W --> L[Resident Login]
+  A --> AT[Existing Admin Token]
+  L --> V[Password Hash Verification]
+  V --> RT[Expiring Resident Token]
+  AT --> G[Server Role Gate]
+  RT --> G
+  G --> AP[Admin APIs]
+  G --> RP[Own Resident APIs]
 ```
 
-The token is stored in browser local storage for the demonstration session. The backend keeps the valid token in application settings. Logout invalidates the backend token and removes the browser copy.
+Tokens are stored in browser local storage for this demonstration architecture. The existing Admin token stays in application settings. Resident tokens are random; only their SHA-256 hashes are stored in `resident_sessions` with expiry. Logout invalidates the server session and removes the browser copy. The resident endpoints take their resident ID from the validated token and building ID from the resident row, never from browser parameters. Admin-only legacy endpoints reject Resident tokens with 403.
 
 ## Lottery Flow
 

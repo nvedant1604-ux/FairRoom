@@ -5,14 +5,14 @@
 Backend:
 
 ```powershell
-cd "C:\Users\vedant\OneDrive\Desktop\Projects\AI Lottery System"
+cd "C:\Users\vedant\OneDrive\Desktop\Projects\FairRoom"
 python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 Frontend, in a second terminal:
 
 ```powershell
-cd "C:\Users\vedant\OneDrive\Desktop\Projects\AI Lottery System\frontend"
+cd "C:\Users\vedant\OneDrive\Desktop\Projects\FairRoom\frontend"
 npm.cmd run dev
 ```
 
@@ -20,10 +20,10 @@ Open `http://127.0.0.1:5173`.
 
 ## Admin Workflow
 
-1. Open **Admin Login** and use `admin@example.com` / `admin123` locally. Change these environment-configurable defaults before any real deployment.
+1. On the welcome page choose **Admin Login** and use `admin@example.com` / `admin123` locally. Change these environment-configurable defaults before any real deployment.
 2. Use **Add Building** to enter the building, society, project, address and location. Select it from **Current Building**.
 3. Use the building controls to edit details or archive an unused building.
-4. Open **Resident Registration**. Enter the resident data, consent and optional document name. Resolve duplicate ID, old-room or contact errors.
+4. Open **Resident Registration**. Enter the resident data, consent and optional document name. Optionally set a portal password of at least 12 characters; the new resident's numeric login ID is shown after saving. For an existing resident, use **Set portal password** in the resident list. Share the ID and password privately. Resolve duplicate ID, old-room or contact errors.
 5. Use **Verify** after reviewing documents, or **Reject** when the record is ineligible.
 6. Open **Room Management** and add room number, wing, floor, size, status and suitability.
 7. On Dashboard or Draw History choose **Create New Draw Cycle**. Enter a name, optional phase/date, required reason and notes.
@@ -52,9 +52,17 @@ A building can always be saved without coordinates. **Open in Google Maps** and 
 
 Location statuses are `Not Set`, `Located`, `Manual` and `Failed`. The standard map offers roadmap/satellite, zoom, drag/pan and fullscreen. It does not include 3D, Street View or in-app directions.
 
-## Public Resident Search
+## Resident Portal
 
-Logout, open **Resident Search**, select a building, enter an exact old-room number or the last four ID digits and choose Search. The screen displays masked identity, allocation, completed draw participation and explanations without admin-only override details.
+1. On the welcome page choose **Resident Login**. Enter the resident ID and password provided by the administrator.
+2. **Dashboard** shows your building, verification, current eligibility and priority points, latest draw result, allocation and recent history.
+3. **My Profile** shows your own details with a masked Aadhaar/ID. **My Eligibility** explains the active building criteria and awarded priority points.
+4. **My Lottery** shows your own draw participation, result and waiting-list position when recorded. **My Allocation** shows your own room if allocated. **My History** shows events already recorded in FairRoom.
+5. Choose **Logout** when finished. Five wrong passwords temporarily lock the account for 15 minutes; ask the administrator to reset the password if needed.
+
+## Admin Resident Search
+
+While signed in as Admin, open **Resident Search**, select a building, enter an exact old-room number or the last four ID digits and choose Search. The screen displays masked identity, allocation, completed draw participation and explanations. Residents use their own private portal instead.
 
 ## Demo Reset
 

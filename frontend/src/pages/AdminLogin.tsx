@@ -12,8 +12,8 @@ interface AdminLoginProps {
 }
 
 export function AdminLogin({ isAdmin, onLogin, onLogout, notice }: AdminLoginProps) {
-  const [email, setEmail] = useState("admin@example.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -98,6 +98,7 @@ export function AdminLogin({ isAdmin, onLogin, onLogout, notice }: AdminLoginPro
           >
             {loading ? "Logging in..." : "Login as Admin"}
           </button>
+          {!isAdmin ? <a className="inline-block text-sm font-semibold text-earth hover:text-forest" href="/login">Back to role selection</a> : null}
           {isAdmin ? (
             <button
               className="focus-ring w-full rounded-lg border border-slate-300 px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50"
@@ -131,7 +132,7 @@ export function AdminLogin({ isAdmin, onLogin, onLogout, notice }: AdminLoginPro
           ))}
         </div>
         <div className="mt-5 rounded-lg border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800">
-          Demo credentials are prefilled for local MVP testing. In production, connect this to a verified identity provider and role-based permissions.
+          Use the administrator credentials configured for this FairRoom installation.
         </div>
       </section>
     </div>
